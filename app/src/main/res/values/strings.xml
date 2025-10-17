@@ -4,5 +4,8 @@
     <string name="add_todo">Add Todo</string>
     <string name="todo_hint">Enter todo item...</string>
     <string name="empty_list">No todos yet. Add one to get started!</string>
-    <string name="widget_description">Shows today\'s todos</string>
+    <string name="widget_description">Today</string>
+    <string name="widget_description_text">Shows today\'s todos</string>
+    <string name="calendar_widget_description">Calendar</string>
+    <string name="calendar_widget_description_text">Shows calendar with todos</string>
 </resources>

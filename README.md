@@ -49,11 +49,21 @@ A feature-rich Android todo list application with recurring tasks, notifications
 - **Past, Current & Future**: View todos across all time periods
 - **Visual Feedback**: See which dates have todos
 
-### Home Screen Widget
+### Home Screen Widgets
+
+**Todo List Widget:**
 - **Quick Access**: View today's todos directly from home screen
 - **Check Off Items**: Complete todos without opening the app
 - **Auto-Update**: Widget refreshes to show current todos
 - **Resizable**: Adjust widget size to fit your home screen layout
+
+**Calendar Widget:**
+- **Monthly View**: See the current month at a glance
+- **Visual Indicators**: Days with todos show a small dot indicator
+- **Today Highlight**: Current day highlighted in purple
+- **Quick Todo List**: Shows up to 5 of today's todos below the calendar
+- **Tap to Open**: Tap header to open calendar view in app
+- **Compact Design**: Fits nicely on home screen while showing useful info
 
 ## Technology Stack
 
@@ -180,12 +190,23 @@ app/src/main/java/com/example/todoapp/
    - Access: Menu → Calendar View
    - Tap any date to see todos for that day
 
-### Adding Widget
+### Adding Widgets
+
+**Todo List Widget:**
 1. Long press on home screen
 2. Select "Widgets"
-3. Find "Todo App" widget
+3. Find "Todo App" → "Today's Todos" widget
 4. Drag to desired location
 5. Widget shows today's todos and updates automatically
+
+**Calendar Widget:**
+1. Long press on home screen
+2. Select "Widgets"
+3. Find "Todo App" → "Calendar" widget
+4. Drag to desired location
+5. Widget shows current month with todo indicators
+6. Today's todos appear below the calendar
+7. Tap any day to see todos for that date (opens app)
 
 ## Permissions
 

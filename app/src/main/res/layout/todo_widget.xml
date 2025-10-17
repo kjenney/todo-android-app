@@ -6,15 +6,24 @@
     android:orientation="vertical"
     android:padding="8dp">
 
-    <TextView
+    <LinearLayout
+        android:id="@+id/widgetHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/purple_500"
-        android:padding="8dp"
-        android:text="Today's Todos"
-        android:textColor="@android:color/white"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        android:clickable="true"
+        android:focusable="true"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Today's Todos"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <ListView
         android:id="@+id/widgetTodoList"
@@ -22,5 +31,16 @@
         android:layout_height="match_parent"
         android:divider="@android:color/transparent"
         android:dividerHeight="4dp" />
+
+    <TextView
+        android:id="@+id/widgetEmptyView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="16dp"
+        android:text="No todos for today"
+        android:textColor="@android:color/darker_gray"
+        android:textSize="14sp"
+        android:visibility="gone" />
 
 </LinearLayout>

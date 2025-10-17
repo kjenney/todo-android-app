@@ -21,41 +21,63 @@ class TodoWidget : AppWidgetProvider() {
         }
     }
 
+    override fun onEnabled(context: Context) {
+        // Called when the first widget is created
+    }
+
+    override fun onDisabled(context: Context) {
+        // Called when the last widget is removed
+    }
+
     companion object {
         internal fun updateAppWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int
         ) {
-            // Create an Intent to launch MainActivity
-            val pendingIntent: PendingIntent = PendingIntent.getActivity(
-                context,
-                0,
-                Intent(context, MainActivity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+            try {
+                // Get the layout for the widget
+                val views = RemoteViews(context.packageName, R.layout.todo_widget)
 
-            // Get the layout for the widget and attach click listener
-            val views = RemoteViews(context.packageName, R.layout.todo_widget)
-            views.setOnClickPendingIntent(R.id.widgetTodoList, pendingIntent)
+                // Create an Intent to launch MainActivity when header is clicked
+                val headerIntent = Intent(context, MainActivity::class.java)
+                val headerPendingIntent = PendingIntent.getActivity(
+                    context,
+                    0,
+                    headerIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                views.setOnClickPendingIntent(R.id.widgetHeader, headerPendingIntent)
 
-            // Set up the RemoteViews service for the ListView
-            val serviceIntent = Intent(context, TodoWidgetService::class.java)
-            serviceIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            views.setRemoteAdapter(R.id.widgetTodoList, serviceIntent)
+                // Set up the RemoteViews service for the ListView
+                val serviceIntent = Intent(context, TodoWidgetService::class.java).apply {
+                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                    // Add a unique data to ensure the intent is unique for each widget
+                    data = android.net.Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
+                }
+                views.setRemoteAdapter(R.id.widgetTodoList, serviceIntent)
 
-            // Set up the click intent template for list items
-            val clickIntentTemplate = Intent(context, MainActivity::class.java)
-            val clickPendingIntentTemplate = PendingIntent.getActivity(
-                context,
-                0,
-                clickIntentTemplate,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            views.setPendingIntentTemplate(R.id.widgetTodoList, clickPendingIntentTemplate)
+                // Set empty view
+                views.setEmptyView(R.id.widgetTodoList, R.id.widgetEmptyView)
 
-            // Tell the AppWidgetManager to perform an update on the current widget
-            appWidgetManager.updateAppWidget(appWidgetId, views)
+                // Set up the click intent template for list items
+                val clickIntent = Intent(context, MainActivity::class.java)
+                val clickPendingIntent = PendingIntent.getActivity(
+                    context,
+                    0,
+                    clickIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                views.setPendingIntentTemplate(R.id.widgetTodoList, clickPendingIntent)
+
+                // Tell the AppWidgetManager to perform an update on the current widget
+                appWidgetManager.updateAppWidget(appWidgetId, views)
+
+                // Notify the widget that data has changed
+                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widgetTodoList)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }

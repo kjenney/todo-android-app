@@ -10,13 +10,13 @@ import com.example.todoapp.data.TodoEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
-class TodoWidgetService : RemoteViewsService() {
+class CalendarWidgetTodoService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {
-        return TodoRemoteViewsFactory(this.applicationContext, intent)
+        return CalendarTodoFactory(this.applicationContext, intent)
     }
 }
 
-class TodoRemoteViewsFactory(
+class CalendarTodoFactory(
     private val context: Context,
     private val intent: Intent
 ) : RemoteViewsService.RemoteViewsFactory {
@@ -24,12 +24,10 @@ class TodoRemoteViewsFactory(
     private var todoList: List<TodoEntity> = emptyList()
 
     override fun onCreate() {
-        // Initialize - load initial data
         loadData()
     }
 
     override fun onDataSetChanged() {
-        // Reload data when notified
         loadData()
     }
 
@@ -38,6 +36,7 @@ class TodoRemoteViewsFactory(
             val database = TodoDatabase.getDatabase(context)
             todoList = runBlocking {
                 try {
+                    // Show today's todos by default
                     database.todoDao().getTodayTodos().first()
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -51,11 +50,10 @@ class TodoRemoteViewsFactory(
     }
 
     override fun onDestroy() {
-        // Cleanup
         todoList = emptyList()
     }
 
-    override fun getCount(): Int = todoList.size
+    override fun getCount(): Int = todoList.size.coerceAtMost(5) // Limit to 5 items
 
     override fun getViewAt(position: Int): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_todo_item)
@@ -66,7 +64,6 @@ class TodoRemoteViewsFactory(
                 views.setTextViewText(R.id.widgetTodoCheckbox, todo.text)
                 views.setBoolean(R.id.widgetTodoCheckbox, "setChecked", todo.isCompleted)
 
-                // Set fill-in intent for item clicks
                 val fillInIntent = Intent().apply {
                     putExtra("TODO_ID", todo.id)
                 }
@@ -79,10 +76,7 @@ class TodoRemoteViewsFactory(
         return views
     }
 
-    override fun getLoadingView(): RemoteViews? {
-        // Return null to use default loading view
-        return null
-    }
+    override fun getLoadingView(): RemoteViews? = null
 
     override fun getViewTypeCount(): Int = 1
 
