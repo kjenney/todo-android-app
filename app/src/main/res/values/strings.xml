@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Todo App</string>
+    <string name="add_todo">Add Todo</string>
+    <string name="todo_hint">Enter todo item...</string>
+    <string name="empty_list">No todos yet. Add one to get started!</string>
+    <string name="widget_description">Shows today\'s todos</string>
+</resources>
