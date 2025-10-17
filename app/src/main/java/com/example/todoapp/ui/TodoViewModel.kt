@@ -3,6 +3,7 @@ package com.example.todoapp.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.switchMap
@@ -20,12 +21,34 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _selectedDate = MutableLiveData<Long>()
 
-    val todos: LiveData<List<TodoEntity>> = viewMode.switchMap { mode ->
+    private val _hideCompleted = MutableLiveData(false)
+    val hideCompleted: LiveData<Boolean> = _hideCompleted
+
+    private val rawTodos: LiveData<List<TodoEntity>> = viewMode.switchMap { mode ->
         when (mode) {
             ViewMode.ALL -> repository.getAllTodos().asLiveData()
             ViewMode.TODAY -> repository.getTodayTodos().asLiveData()
             ViewMode.DATE -> _selectedDate.switchMap { date ->
                 repository.getTodosByDate(date).asLiveData()
+            }
+        }
+    }
+
+    val todos: LiveData<List<TodoEntity>> = MediatorLiveData<List<TodoEntity>>().apply {
+        addSource(rawTodos) { todoList ->
+            value = if (_hideCompleted.value == true) {
+                todoList.filter { !it.isCompleted }
+            } else {
+                todoList
+            }
+        }
+        addSource(_hideCompleted) { shouldHide ->
+            rawTodos.value?.let { todoList ->
+                value = if (shouldHide) {
+                    todoList.filter { !it.isCompleted }
+                } else {
+                    todoList
+                }
             }
         }
     }
@@ -39,6 +62,10 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     fun setSelectedDate(date: Long) {
         _selectedDate.value = date
         _viewMode.value = ViewMode.DATE
+    }
+
+    fun setHideCompleted(hide: Boolean) {
+        _hideCompleted.value = hide
     }
 
     fun getTodoById(id: Long): LiveData<TodoEntity?> {

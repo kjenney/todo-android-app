@@ -17,4 +17,10 @@
         android:title="Calendar View"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/action_hide_completed"
+        android:checkable="true"
+        android:title="Hide Completed"
+        app:showAsAction="never" />
+
 </menu>

@@ -190,6 +190,13 @@ app/src/main/java/com/example/todoapp/
    - Access: Menu → Calendar View
    - Tap any date to see todos for that day
 
+### Filter Options
+- **Hide Completed**: Toggle to hide/show completed todos
+  - Access: Menu → Hide Completed (checkable option)
+  - Applies to all view modes (Today, All Todos, Calendar)
+  - Useful for focusing on active tasks
+  - State persists while app is running
+
 ### Adding Widgets
 
 **Todo List Widget:**

@@ -132,6 +132,11 @@ class MainActivity : AppCompatActivity() {
                 startActivity(Intent(this, CalendarActivity::class.java))
                 true
             }
+            R.id.action_hide_completed -> {
+                item.isChecked = !item.isChecked
+                viewModel.setHideCompleted(item.isChecked)
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
