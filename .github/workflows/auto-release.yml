@@ -1,0 +1,174 @@
+name: Auto Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+
+jobs:
+  check-and-release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper versioning
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          # Get the latest tag, or use v0.0.0 if no tags exist
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Latest tag: $LATEST_TAG"
+
+      - name: Determine version bump
+        id: determine_bump
+        run: |
+          # Get commit messages since last tag
+          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
+
+          if [ "$LATEST_TAG" = "v0.0.0" ]; then
+            COMMITS=$(git log --pretty=format:"%s" -10)
+          else
+            COMMITS=$(git log $LATEST_TAG..HEAD --pretty=format:"%s")
+          fi
+
+          echo "Commits since last tag:"
+          echo "$COMMITS"
+
+          # Default to patch bump
+          BUMP_TYPE="patch"
+
+          # Check for breaking changes or major keywords
+          if echo "$COMMITS" | grep -qiE "^(BREAKING CHANGE:|major:|!:|\[major\])"; then
+            BUMP_TYPE="major"
+          # Check for new features
+          elif echo "$COMMITS" | grep -qiE "^(feat:|feature:|minor:|\[minor\]|Add|Added)"; then
+            BUMP_TYPE="minor"
+          # Check for fixes, updates, or other changes
+          elif echo "$COMMITS" | grep -qiE "^(fix:|bugfix:|patch:|\[patch\]|Fix|Fixed|Update)"; then
+            BUMP_TYPE="patch"
+          fi
+
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "Determined bump type: $BUMP_TYPE"
+
+      - name: Calculate new version
+        id: calculate_version
+        run: |
+          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
+          BUMP_TYPE="${{ steps.determine_bump.outputs.bump_type }}"
+
+          # Remove 'v' prefix and split version
+          VERSION=${LATEST_TAG#v}
+
+          IFS='.' read -r -a VERSION_PARTS <<< "$VERSION"
+          MAJOR="${VERSION_PARTS[0]:-0}"
+          MINOR="${VERSION_PARTS[1]:-0}"
+          PATCH="${VERSION_PARTS[2]:-0}"
+
+          # Bump version based on type
+          case $BUMP_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version will be: $NEW_VERSION"
+
+      - name: Check if version already exists
+        id: check_version
+        run: |
+          NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
+          if git rev-parse "$NEW_VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag $NEW_VERSION already exists, skipping release"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag $NEW_VERSION does not exist, will create"
+          fi
+
+      - name: Generate release notes
+        id: generate_notes
+        if: steps.check_version.outputs.exists == 'false'
+        run: |
+          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
+          NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
+          BUMP_TYPE="${{ steps.determine_bump.outputs.bump_type }}"
+
+          # Generate release notes from commits
+          if [ "$LATEST_TAG" = "v0.0.0" ]; then
+            COMMITS=$(git log --pretty=format:"- %s (%h)" -10)
+          else
+            COMMITS=$(git log $LATEST_TAG..HEAD --pretty=format:"- %s (%h)")
+          fi
+
+          # Create release notes file
+          cat > release_notes.md << EOF
+          ## Release $NEW_VERSION
+
+          **Version Type:** ${BUMP_TYPE^} release
+
+          ### Changes
+
+          $COMMITS
+
+          ### Installation
+
+          Download the APK from the assets below and install on your Android device (API 24+).
+
+          ---
+
+          *Generated automatically by GitHub Actions*
+          EOF
+
+          echo "Release notes generated"
+          cat release_notes.md
+
+      - name: Create and push tag
+        if: steps.check_version.outputs.exists == 'false'
+        run: |
+          NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION"
+          git push origin "$NEW_VERSION"
+
+          echo "Created and pushed tag: $NEW_VERSION"
+
+      - name: Wait for tag to propagate
+        if: steps.check_version.outputs.exists == 'false'
+        run: sleep 5
+
+  trigger-build:
+    needs: check-and-release
+    runs-on: ubuntu-latest
+    if: needs.check-and-release.outputs.exists == 'false'
+
+    steps:
+      - name: Trigger signed release workflow
+        run: |
+          echo "Tag created successfully. The build-signed-release workflow will be triggered automatically."
