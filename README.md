@@ -155,6 +155,26 @@ app/src/main/java/com/example/todoapp/
 ./gradlew clean build
 ```
 
+### Automated Builds with GitHub Actions
+
+The project includes automated CI/CD workflows:
+
+**On every push/PR to main:**
+- Automatically builds debug and release APKs
+- APKs available as artifacts in GitHub Actions (30 day retention)
+- Download from: Actions → Latest Run → Artifacts
+
+**On version tags (e.g., v1.0.0):**
+- Builds signed release APK (requires keystore secrets)
+- Automatically creates GitHub Release with APK attached
+- See `.github/workflows/README.md` for setup instructions
+
+**To create a release:**
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 ## Usage Guide
 
 ### Adding a Todo
