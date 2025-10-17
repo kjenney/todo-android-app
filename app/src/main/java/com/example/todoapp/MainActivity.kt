@@ -15,6 +15,7 @@ import com.example.todoapp.ui.AddTodoActivity
 import com.example.todoapp.ui.CalendarActivity
 import com.example.todoapp.ui.TodoEntityAdapter
 import com.example.todoapp.ui.TodoViewModel
+import com.example.todoapp.utils.PermissionHelper
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class MainActivity : AppCompatActivity() {
@@ -63,6 +64,51 @@ class MainActivity : AppCompatActivity() {
         // Set default view mode to TODAY
         viewModel.setViewMode(TodoViewModel.ViewMode.TODAY)
         supportActionBar?.title = "Today's Todos"
+
+        // Check and request notification permissions
+        checkNotificationPermissions()
+    }
+
+    private fun checkNotificationPermissions() {
+        // Request all necessary permissions for reliable notifications
+        if (!PermissionHelper.checkAllNotificationPermissions(this)) {
+            PermissionHelper.requestAllNotificationPermissions(this)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        when (requestCode) {
+            PermissionHelper.REQUEST_NOTIFICATION_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    // Notification permission granted, check other permissions
+                    checkNotificationPermissions()
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Notification permission is required to receive todo reminders",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        // Recheck permissions after returning from settings
+        when (requestCode) {
+            PermissionHelper.REQUEST_BATTERY_OPTIMIZATION,
+            PermissionHelper.REQUEST_EXACT_ALARM_PERMISSION -> {
+                checkNotificationPermissions()
+            }
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

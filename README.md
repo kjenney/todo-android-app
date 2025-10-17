@@ -190,9 +190,44 @@ app/src/main/java/com/example/todoapp/
 ## Permissions
 
 The app requires the following permissions:
-- `POST_NOTIFICATIONS`: Show todo notifications
-- `SCHEDULE_EXACT_ALARM`: Schedule exact alarm for due date reminders
+- `POST_NOTIFICATIONS`: Show todo notifications (Android 13+)
+- `SCHEDULE_EXACT_ALARM`: Schedule exact alarm for due date reminders (Android 12+)
 - `USE_EXACT_ALARM`: Use exact alarm API
+- `WAKE_LOCK`: Wake device for notifications
+- `RECEIVE_BOOT_COMPLETED`: Reschedule notifications after device restart
+- `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`: Request exemption from battery optimization
+
+### Setting Up Notifications (Important for Pixel/Android 12+)
+
+To ensure you receive notifications when your phone is idle or screen is off:
+
+1. **Grant Notification Permission** (Android 13+):
+   - The app will request this on first launch
+   - Or go to: Settings → Apps → Todo App → Notifications → Allow
+
+2. **Enable Exact Alarms** (Android 12+):
+   - The app will guide you to: Settings → Apps → Todo App → Alarms & reminders → Allow
+   - This ensures notifications appear exactly when todos are due
+
+3. **Disable Battery Optimization** (Critical for background notifications):
+   - The app will prompt you to exempt it from battery optimization
+   - Or manually: Settings → Apps → Todo App → Battery → Unrestricted
+   - **This is the most important step for Pixel phones!**
+
+4. **Additional Pixel-Specific Settings**:
+   - Settings → Apps → Todo App → Battery → Battery optimization → Not optimized
+   - Settings → Battery → Adaptive preferences → Disable for Todo App
+   - Settings → Apps → Special app access → Battery optimization → Todo App → Don't optimize
+
+### Troubleshooting Notifications
+
+If you're not receiving notifications when phone is idle:
+
+1. Check that all three permissions above are granted
+2. Verify notification settings: Settings → Notifications → App notifications → Todo App
+3. Ensure "Do Not Disturb" mode isn't blocking notifications
+4. Restart the app after granting battery optimization exemption
+5. Create a test todo due in 2-3 minutes to verify notifications work
 
 ## Database Schema
 
