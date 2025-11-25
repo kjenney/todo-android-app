@@ -109,43 +109,6 @@ jobs:
             echo "Tag $NEW_VERSION does not exist, will create"
           fi
 
-      - name: Generate release notes
-        id: generate_notes
-        if: steps.check_version.outputs.exists == 'false'
-        run: |
-          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
-          NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
-          BUMP_TYPE="${{ steps.determine_bump.outputs.bump_type }}"
-
-          # Generate release notes from commits
-          if [ "$LATEST_TAG" = "v0.0.0" ]; then
-            COMMITS=$(git log --pretty=format:"- %s (%h)" -10)
-          else
-            COMMITS=$(git log $LATEST_TAG..HEAD --pretty=format:"- %s (%h)")
-          fi
-
-          # Create release notes file
-          cat > release_notes.md << EOF
-          ## Release $NEW_VERSION
-
-          **Version Type:** ${BUMP_TYPE^} release
-
-          ### Changes
-
-          $COMMITS
-
-          ### Installation
-
-          Download the APK from the assets below and install on your Android device (API 24+).
-
-          ---
-
-          *Generated automatically by GitHub Actions*
-          EOF
-
-          echo "Release notes generated"
-          cat release_notes.md
-
       - name: Create and push tag
         if: steps.check_version.outputs.exists == 'false'
         run: |
@@ -159,16 +122,113 @@ jobs:
 
           echo "Created and pushed tag: $NEW_VERSION"
 
-      - name: Wait for tag to propagate
+      - name: Set up JDK 17
         if: steps.check_version.outputs.exists == 'false'
-        run: sleep 5
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
 
-  trigger-build:
-    needs: check-and-release
-    runs-on: ubuntu-latest
-    if: needs.check-and-release.outputs.exists == 'false'
+      - name: Grant execute permission for gradlew
+        if: steps.check_version.outputs.exists == 'false'
+        run: chmod +x gradlew
 
-    steps:
-      - name: Trigger signed release workflow
+      - name: Decode Keystore
+        if: steps.check_version.outputs.exists == 'false'
+        env:
+          ENCODED_STRING: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          echo "Tag created successfully. The build-signed-release workflow will be triggered automatically."
+          if [ -n "$ENCODED_STRING" ]; then
+            echo $ENCODED_STRING | base64 -di > app/keystore.jks
+            echo "KEYSTORE_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "KEYSTORE_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Build Signed Release APK
+        if: steps.check_version.outputs.exists == 'false' && env.KEYSTORE_EXISTS == 'true'
+        env:
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+        run: |
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/app/keystore.jks \
+            -Pandroid.injected.signing.store.password=$SIGNING_STORE_PASSWORD \
+            -Pandroid.injected.signing.key.alias=$SIGNING_KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$SIGNING_KEY_PASSWORD
+
+      - name: Build Unsigned Release APK (fallback)
+        if: steps.check_version.outputs.exists == 'false' && env.KEYSTORE_EXISTS != 'true'
+        run: ./gradlew assembleRelease
+
+      - name: Get APK filename
+        if: steps.check_version.outputs.exists == 'false'
+        id: get_apk
+        run: |
+          if [ "${{ env.KEYSTORE_EXISTS }}" = "true" ]; then
+            APK_PATH="app/build/outputs/apk/release/app-release.apk"
+            APK_NAME="todo-app-${{ steps.calculate_version.outputs.new_version }}.apk"
+          else
+            APK_PATH="app/build/outputs/apk/release/app-release-unsigned.apk"
+            APK_NAME="todo-app-${{ steps.calculate_version.outputs.new_version }}-unsigned.apk"
+          fi
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
+
+      - name: Update release notes with APK info
+        if: steps.check_version.outputs.exists == 'false'
+        run: |
+          NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
+          APK_NAME="${{ steps.get_apk.outputs.apk_name }}"
+          BUMP_TYPE="${{ steps.determine_bump.outputs.bump_type }}"
+          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
+
+          # Generate release notes from commits
+          if [ "$LATEST_TAG" = "v0.0.0" ]; then
+            COMMITS=$(git log --pretty=format:"- %s (%h)" -10)
+          else
+            COMMITS=$(git log $LATEST_TAG..HEAD --pretty=format:"- %s (%h)")
+          fi
+
+          # Create release notes file with APK reference
+          cat > release_notes.md << EOF
+          ## Release $NEW_VERSION
+
+          **Version Type:** ${BUMP_TYPE^} release
+
+          ### Changes
+
+          $COMMITS
+
+          ### Download
+
+          📦 **APK:** \`$APK_NAME\`
+
+          Download the APK file attached to this release and install it on your Android device (API 24+).
+
+          ---
+
+          *Generated automatically by GitHub Actions*
+          EOF
+
+          echo "Updated release notes:"
+          cat release_notes.md
+
+      - name: Create GitHub Release
+        if: steps.check_version.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.calculate_version.outputs.new_version }}
+          name: ${{ steps.calculate_version.outputs.new_version }}
+          body_path: release_notes.md
+          files: ${{ steps.get_apk.outputs.apk_path }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean up keystore
+        if: always() && steps.check_version.outputs.exists == 'false'
+        run: rm -f app/keystore.jks
