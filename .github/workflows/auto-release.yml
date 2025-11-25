@@ -159,29 +159,36 @@ jobs:
             -Pandroid.injected.signing.key.alias=$SIGNING_KEY_ALIAS \
             -Pandroid.injected.signing.key.password=$SIGNING_KEY_PASSWORD
 
-      - name: Build Unsigned Release APK (fallback)
-        if: steps.check_version.outputs.exists == 'false' && env.KEYSTORE_EXISTS != 'true'
-        run: ./gradlew assembleRelease
+      - name: Build Debug APK
+        if: steps.check_version.outputs.exists == 'false'
+        run: ./gradlew assembleDebug
 
-      - name: Get APK filename
+      - name: Get APK filenames
         if: steps.check_version.outputs.exists == 'false'
         id: get_apk
         run: |
+          DEBUG_APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          DEBUG_APK_NAME="todo-app-${{ steps.calculate_version.outputs.new_version }}-debug.apk"
+
           if [ "${{ env.KEYSTORE_EXISTS }}" = "true" ]; then
-            APK_PATH="app/build/outputs/apk/release/app-release.apk"
-            APK_NAME="todo-app-${{ steps.calculate_version.outputs.new_version }}.apk"
+            RELEASE_APK_PATH="app/build/outputs/apk/release/app-release.apk"
+            RELEASE_APK_NAME="todo-app-${{ steps.calculate_version.outputs.new_version }}.apk"
+            echo "release_apk_path=$RELEASE_APK_PATH" >> $GITHUB_OUTPUT
+            echo "release_apk_name=$RELEASE_APK_NAME" >> $GITHUB_OUTPUT
+            echo "has_signed=true" >> $GITHUB_OUTPUT
           else
-            APK_PATH="app/build/outputs/apk/release/app-release-unsigned.apk"
-            APK_NAME="todo-app-${{ steps.calculate_version.outputs.new_version }}-unsigned.apk"
+            echo "has_signed=false" >> $GITHUB_OUTPUT
           fi
-          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
-          echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
+
+          echo "debug_apk_path=$DEBUG_APK_PATH" >> $GITHUB_OUTPUT
+          echo "debug_apk_name=$DEBUG_APK_NAME" >> $GITHUB_OUTPUT
 
       - name: Update release notes with APK info
         if: steps.check_version.outputs.exists == 'false'
         run: |
           NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
-          APK_NAME="${{ steps.get_apk.outputs.apk_name }}"
+          DEBUG_APK_NAME="${{ steps.get_apk.outputs.debug_apk_name }}"
+          HAS_SIGNED="${{ steps.get_apk.outputs.has_signed }}"
           BUMP_TYPE="${{ steps.determine_bump.outputs.bump_type }}"
           LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
 
@@ -191,6 +198,23 @@ jobs:
           else
             COMMITS=$(git log $LATEST_TAG..HEAD --pretty=format:"- %s (%h)")
           fi
+
+          # Build download section based on available APKs
+          DOWNLOAD_SECTION="### Download
+
+          📦 **Debug APK:** \`$DEBUG_APK_NAME\`"
+
+          if [ "$HAS_SIGNED" = "true" ]; then
+            RELEASE_APK_NAME="${{ steps.get_apk.outputs.release_apk_name }}"
+            DOWNLOAD_SECTION="$DOWNLOAD_SECTION
+          📦 **Signed Release APK:** \`$RELEASE_APK_NAME\`"
+          fi
+
+          DOWNLOAD_SECTION="$DOWNLOAD_SECTION
+
+          Download the APK file attached to this release and install it on your Android device (API 24+).
+
+          **Note:** Use the debug APK for development/testing. The signed release APK is recommended for production use if available."
 
           # Create release notes file with APK reference
           cat > release_notes.md << EOF
@@ -202,11 +226,7 @@ jobs:
 
           $COMMITS
 
-          ### Download
-
-          📦 **APK:** \`$APK_NAME\`
-
-          Download the APK file attached to this release and install it on your Android device (API 24+).
+          $DOWNLOAD_SECTION
 
           ---
 
@@ -223,9 +243,12 @@ jobs:
           tag_name: ${{ steps.calculate_version.outputs.new_version }}
           name: ${{ steps.calculate_version.outputs.new_version }}
           body_path: release_notes.md
-          files: ${{ steps.get_apk.outputs.apk_path }}
+          files: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/app-release.apk
           draft: false
           prerelease: false
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

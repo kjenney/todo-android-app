@@ -31,7 +31,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="40dp"
                 android:layout_marginTop="4dp"
-                android:textColor="@color/purple_700"
+                android:textColor="@color/red"
                 android:textSize="12sp"
                 android:visibility="gone" />
 

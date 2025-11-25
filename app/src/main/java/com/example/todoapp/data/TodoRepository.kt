@@ -72,31 +72,8 @@ class TodoRepository(
         val parentId = todo.parentTodoId ?: todo.id
         val nextDueTime = nextOccurrence.dueDateTime ?: return false
 
-        // For TWICE_DAILY, check if there's already an occurrence within the same day
-        if (todo.recurrencePattern.type == RecurrenceType.TWICE_DAILY) {
-            // Get start and end of the day for the next occurrence
-            val calendar = Calendar.getInstance().apply {
-                timeInMillis = nextDueTime
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }
-            val dayStart = calendar.timeInMillis
-
-            calendar.set(Calendar.HOUR_OF_DAY, 23)
-            calendar.set(Calendar.MINUTE, 59)
-            calendar.set(Calendar.SECOND, 59)
-            val dayEnd = calendar.timeInMillis
-
-            // Check if there are already 2 or more incomplete todos for this day
-            val existingTodos = todoDao.getRelatedTodosByDateRange(parentId, dayStart, dayEnd)
-
-            // If there are already 2 or more incomplete todos on this day, it's a duplicate
-            return existingTodos.size >= 2
-        }
-
-        // For other recurrence types, check if there's already a todo within 1 hour of the next occurrence
+        // Check if there's already a todo within 1 hour of the next occurrence time
+        // This works for all recurrence types including TWICE_DAILY
         val hourBefore = nextDueTime - (60 * 60 * 1000)
         val hourAfter = nextDueTime + (60 * 60 * 1000)
         val existingTodos = todoDao.getRelatedTodosByDateRange(parentId, hourBefore, hourAfter)
