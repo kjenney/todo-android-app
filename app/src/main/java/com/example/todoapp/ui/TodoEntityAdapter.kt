@@ -87,6 +87,7 @@ class TodoEntityAdapter(
         val pattern = todo.recurrencePattern
         return when (pattern.type) {
             RecurrenceType.HOURLY -> "Every ${pattern.interval} hour(s)"
+            RecurrenceType.TWICE_DAILY -> "Twice daily"
             RecurrenceType.DAILY -> "Every ${pattern.interval} day(s)"
             RecurrenceType.WEEKLY -> {
                 if (pattern.daysOfWeek.isNotEmpty()) {

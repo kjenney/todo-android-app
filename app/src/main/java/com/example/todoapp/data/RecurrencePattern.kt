@@ -3,6 +3,7 @@ package com.example.todoapp.data
 enum class RecurrenceType {
     NONE,
     HOURLY,
+    TWICE_DAILY,
     DAILY,
     WEEKLY,
     MONTHLY,
@@ -23,6 +24,11 @@ data class RecurrencePattern(
         fun hourly(interval: Int = 1) = RecurrencePattern(
             type = RecurrenceType.HOURLY,
             interval = interval
+        )
+
+        fun twiceDaily() = RecurrencePattern(
+            type = RecurrenceType.TWICE_DAILY,
+            interval = 12
         )
 
         fun daily(interval: Int = 1) = RecurrencePattern(

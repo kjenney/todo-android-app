@@ -84,6 +84,9 @@ class TodoRepository(
             RecurrenceType.HOURLY -> {
                 calendar.add(Calendar.HOUR_OF_DAY, pattern.interval)
             }
+            RecurrenceType.TWICE_DAILY -> {
+                calendar.add(Calendar.HOUR_OF_DAY, 12)
+            }
             RecurrenceType.DAILY -> {
                 calendar.add(Calendar.DAY_OF_MONTH, pattern.interval)
             }

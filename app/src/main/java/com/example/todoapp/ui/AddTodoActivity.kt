@@ -85,7 +85,7 @@ class AddTodoActivity : AppCompatActivity() {
     }
 
     private fun setupRecurrenceSpinner() {
-        val recurrenceOptions = arrayOf("None", "Hourly", "Daily", "Weekly", "Monthly", "Yearly")
+        val recurrenceOptions = arrayOf("None", "Hourly", "Twice Daily", "Daily", "Weekly", "Monthly", "Yearly")
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, recurrenceOptions)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         recurrenceSpinner.adapter = adapter
@@ -102,22 +102,26 @@ class AddTodoActivity : AppCompatActivity() {
                         intervalUnitText.text = "hour(s)"
                         daysOfWeekLayout.visibility = View.GONE
                     }
-                    2 -> { // Daily
+                    2 -> { // Twice Daily
+                        intervalLayout.visibility = View.GONE
+                        daysOfWeekLayout.visibility = View.GONE
+                    }
+                    3 -> { // Daily
                         intervalLayout.visibility = View.VISIBLE
                         intervalUnitText.text = "day(s)"
                         daysOfWeekLayout.visibility = View.GONE
                     }
-                    3 -> { // Weekly
+                    4 -> { // Weekly
                         intervalLayout.visibility = View.VISIBLE
                         intervalUnitText.text = "week(s)"
                         daysOfWeekLayout.visibility = View.VISIBLE
                     }
-                    4 -> { // Monthly
+                    5 -> { // Monthly
                         intervalLayout.visibility = View.VISIBLE
                         intervalUnitText.text = "month(s)"
                         daysOfWeekLayout.visibility = View.GONE
                     }
-                    5 -> { // Yearly
+                    6 -> { // Yearly
                         intervalLayout.visibility = View.VISIBLE
                         intervalUnitText.text = "year(s)"
                         daysOfWeekLayout.visibility = View.GONE
@@ -206,12 +210,15 @@ class AddTodoActivity : AppCompatActivity() {
                             recurrenceSpinner.setSelection(1)
                             intervalInput.setText(recurrence.interval.toString())
                         }
-                        RecurrenceType.DAILY -> {
+                        RecurrenceType.TWICE_DAILY -> {
                             recurrenceSpinner.setSelection(2)
+                        }
+                        RecurrenceType.DAILY -> {
+                            recurrenceSpinner.setSelection(3)
                             intervalInput.setText(recurrence.interval.toString())
                         }
                         RecurrenceType.WEEKLY -> {
-                            recurrenceSpinner.setSelection(3)
+                            recurrenceSpinner.setSelection(4)
                             intervalInput.setText(recurrence.interval.toString())
                             // Set day checkboxes
                             recurrence.daysOfWeek.forEach { dayNum ->
@@ -219,11 +226,11 @@ class AddTodoActivity : AppCompatActivity() {
                             }
                         }
                         RecurrenceType.MONTHLY -> {
-                            recurrenceSpinner.setSelection(4)
+                            recurrenceSpinner.setSelection(5)
                             intervalInput.setText(recurrence.interval.toString())
                         }
                         RecurrenceType.YEARLY -> {
-                            recurrenceSpinner.setSelection(5)
+                            recurrenceSpinner.setSelection(6)
                             intervalInput.setText(recurrence.interval.toString())
                         }
                         else -> recurrenceSpinner.setSelection(0)
@@ -277,12 +284,13 @@ class AddTodoActivity : AppCompatActivity() {
         return when (position) {
             0 -> RecurrencePattern.none()
             1 -> RecurrencePattern.hourly(interval)
-            2 -> RecurrencePattern.daily(interval)
-            3 -> {
+            2 -> RecurrencePattern.twiceDaily()
+            3 -> RecurrencePattern.daily(interval)
+            4 -> {
                 val daysOfWeek = dayCheckboxes.filter { it.value.isChecked }.keys
                 RecurrencePattern.weekly(interval, daysOfWeek)
             }
-            4 -> RecurrencePattern.monthly(interval)
+            5 -> RecurrencePattern.monthly(interval)
             else -> RecurrencePattern.none()
         }
     }
