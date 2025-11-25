@@ -32,4 +32,7 @@ interface TodoDao {
 
     @Query("SELECT * FROM todos WHERE dueDateTime <= :currentTime AND notificationEnabled = 1")
     suspend fun getDueTodos(currentTime: Long): List<TodoEntity>
+
+    @Query("SELECT * FROM todos WHERE (id = :parentId OR parentTodoId = :parentId) AND dueDateTime >= :startTime AND dueDateTime <= :endTime AND isCompleted = 0")
+    suspend fun getRelatedTodosByDateRange(parentId: Long, startTime: Long, endTime: Long): List<TodoEntity>
 }
