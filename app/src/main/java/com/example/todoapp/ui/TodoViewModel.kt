@@ -128,6 +128,30 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun getAllTodosForExport(callback: (List<TodoEntity>) -> Unit) {
+        viewModelScope.launch {
+            val allTodos = repository.getAllTodos()
+            allTodos.collect { todos ->
+                callback(todos)
+            }
+        }
+    }
+
+    fun importTodos(todos: List<TodoEntity>) {
+        viewModelScope.launch {
+            todos.forEach { todo ->
+                val id = repository.insertTodo(todo)
+                // Schedule notification if needed
+                if (todo.dueDateTime != null && todo.notificationEnabled) {
+                    val insertedTodo = repository.getTodoById(id)
+                    insertedTodo?.let {
+                        TodoNotificationScheduler.scheduleTodoNotification(getApplication(), it)
+                    }
+                }
+            }
+        }
+    }
+
     enum class ViewMode {
         ALL, TODAY, DATE
     }

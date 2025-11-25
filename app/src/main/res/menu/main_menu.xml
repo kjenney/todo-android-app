@@ -23,4 +23,14 @@
         android:title="Hide Completed"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/action_export_todos"
+        android:title="@string/export_todos"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_import_todos"
+        android:title="@string/import_todos"
+        app:showAsAction="never" />
+
 </menu>

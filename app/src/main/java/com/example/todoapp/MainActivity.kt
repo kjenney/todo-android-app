@@ -1,13 +1,16 @@
 package com.example.todoapp
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -16,6 +19,7 @@ import com.example.todoapp.ui.CalendarActivity
 import com.example.todoapp.ui.TodoEntityAdapter
 import com.example.todoapp.ui.TodoViewModel
 import com.example.todoapp.utils.PermissionHelper
+import com.example.todoapp.utils.TodoExportImportManager
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class MainActivity : AppCompatActivity() {
@@ -26,6 +30,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var todoAdapter: TodoEntityAdapter
 
     private val viewModel: TodoViewModel by viewModels()
+
+    // Activity result launcher for exporting todos
+    private val exportLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        uri?.let { handleExport(it) }
+    }
+
+    // Activity result launcher for importing todos
+    private val importLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let { handleImport(it) }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -137,6 +155,14 @@ class MainActivity : AppCompatActivity() {
                 viewModel.setHideCompleted(item.isChecked)
                 true
             }
+            R.id.action_export_todos -> {
+                startExport()
+                true
+            }
+            R.id.action_import_todos -> {
+                startImport()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -149,5 +175,45 @@ class MainActivity : AppCompatActivity() {
             emptyView.visibility = View.GONE
             recyclerView.visibility = View.VISIBLE
         }
+    }
+
+    private fun startExport() {
+        val fileName = TodoExportImportManager.generateExportFileName()
+        exportLauncher.launch(fileName)
+    }
+
+    private fun startImport() {
+        // Show confirmation dialog before importing
+        AlertDialog.Builder(this)
+            .setTitle(R.string.import_confirmation_title)
+            .setMessage(R.string.import_confirmation_message)
+            .setPositiveButton(R.string.import_button) { _, _ ->
+                importLauncher.launch(arrayOf("application/json"))
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun handleExport(uri: Uri) {
+        viewModel.getAllTodosForExport { todos ->
+            val success = TodoExportImportManager.exportTodos(this, uri, todos)
+            val message = if (success) {
+                getString(R.string.export_success, todos.size)
+            } else {
+                getString(R.string.export_failed)
+            }
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun handleImport(uri: Uri) {
+        val importedTodos = TodoExportImportManager.importTodos(this, uri)
+        val message = if (importedTodos != null && importedTodos.isNotEmpty()) {
+            viewModel.importTodos(importedTodos)
+            getString(R.string.import_success, importedTodos.size)
+        } else {
+            getString(R.string.import_failed)
+        }
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 }

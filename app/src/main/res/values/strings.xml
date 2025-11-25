@@ -8,4 +8,13 @@
     <string name="widget_description_text">Shows today\'s todos</string>
     <string name="calendar_widget_description">Calendar</string>
     <string name="calendar_widget_description_text">Shows calendar with todos</string>
+    <string name="export_todos">Export Todos</string>
+    <string name="import_todos">Import Todos</string>
+    <string name="import_confirmation_title">Import Todos</string>
+    <string name="import_confirmation_message">This will add todos from the selected file. Your existing todos will not be deleted.\n\nContinue?</string>
+    <string name="import_button">Import</string>
+    <string name="export_success">Successfully exported %d todos</string>
+    <string name="export_failed">Failed to export todos</string>
+    <string name="import_success">Successfully imported %d todos</string>
+    <string name="import_failed">Failed to import todos or file is empty</string>
 </resources>
