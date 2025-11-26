@@ -70,19 +70,27 @@ class TodoAlarmReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        // Use BigTextStyle to make notification expandable and show actions
+        val bigTextStyle = NotificationCompat.BigTextStyle()
+            .bigText(todoText)
+            .setBigContentTitle("Todo Reminder")
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Todo Reminder")
             .setContentText(todoText)
+            .setStyle(bigTextStyle)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
-                "Complete",
+                "Mark Complete",
                 completePendingIntent
             )
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .build()
 
         notificationManager.notify(todoId.toInt(), notification)

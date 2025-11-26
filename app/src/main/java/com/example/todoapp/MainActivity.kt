@@ -85,6 +85,17 @@ class MainActivity : AppCompatActivity() {
 
         // Check and request notification permissions
         checkNotificationPermissions()
+
+        // Clear any old WorkManager notifications (migration from old system)
+        clearOldWorkManagerNotifications()
+    }
+
+    private fun clearOldWorkManagerNotifications() {
+        try {
+            androidx.work.WorkManager.getInstance(this).cancelAllWork()
+        } catch (e: Exception) {
+            // WorkManager might not be initialized, ignore
+        }
     }
 
     private fun checkNotificationPermissions() {
@@ -163,8 +174,80 @@ class MainActivity : AppCompatActivity() {
                 startImport()
                 true
             }
+            R.id.action_test_notification -> {
+                showTestNotification()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun showTestNotification() {
+        // Show a test notification with the complete action
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+
+        // Create channel
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                "todo_reminders",
+                "Todo Reminders",
+                android.app.NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for due todos"
+                enableVibration(true)
+                enableLights(true)
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        // Create main tap intent
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            this,
+            999,
+            intent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        // Create complete action intent
+        val completeIntent = Intent(this, com.example.todoapp.notifications.TodoActionReceiver::class.java).apply {
+            putExtra("TODO_ID", 999L)
+            putExtra("ACTION", "COMPLETE")
+        }
+        val completePendingIntent = android.app.PendingIntent.getBroadcast(
+            this,
+            1999,
+            completeIntent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        // Build notification
+        val bigTextStyle = androidx.core.app.NotificationCompat.BigTextStyle()
+            .bigText("This is a test notification. Swipe down to expand and see the 'Mark Complete' button.")
+            .setBigContentTitle("Test Todo Reminder")
+
+        val notification = androidx.core.app.NotificationCompat.Builder(this, "todo_reminders")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("Test Todo Reminder")
+            .setContentText("Swipe down to expand")
+            .setStyle(bigTextStyle)
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(androidx.core.app.NotificationCompat.DEFAULT_ALL)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Mark Complete",
+                completePendingIntent
+            )
+            .setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC)
+            .setCategory(androidx.core.app.NotificationCompat.CATEGORY_REMINDER)
+            .build()
+
+        notificationManager.notify(999, notification)
+        Toast.makeText(this, "Test notification sent! Swipe down on it to see actions.", Toast.LENGTH_LONG).show()
     }
 
     private fun updateEmptyView(isEmpty: Boolean) {
