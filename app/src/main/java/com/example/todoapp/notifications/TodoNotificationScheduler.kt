@@ -1,9 +1,11 @@
 package com.example.todoapp.notifications
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
-import androidx.work.*
+import android.content.Intent
+import android.os.Build
 import com.example.todoapp.data.TodoEntity
-import java.util.concurrent.TimeUnit
 
 object TodoNotificationScheduler {
 
@@ -20,25 +22,50 @@ object TodoNotificationScheduler {
             return
         }
 
-        val delay = dueTime - currentTime
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        val workRequest = OneTimeWorkRequestBuilder<TodoNotificationWorker>()
-            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
-            .setInputData(workDataOf("TODO_ID" to todo.id))
-            .addTag("todo_notification_${todo.id}")
-            .build()
+        val intent = Intent(context, TodoAlarmReceiver::class.java).apply {
+            putExtra("TODO_ID", todo.id)
+        }
 
-        WorkManager.getInstance(context)
-            .enqueueUniqueWork(
-                "todo_notification_${todo.id}",
-                ExistingWorkPolicy.REPLACE,
-                workRequest
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            todo.id.toInt(),
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        // Use setExactAndAllowWhileIdle for precise timing even in Doze mode
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                dueTime,
+                pendingIntent
             )
+        } else {
+            alarmManager.setExact(
+                AlarmManager.RTC_WAKEUP,
+                dueTime,
+                pendingIntent
+            )
+        }
     }
 
     fun cancelTodoNotification(context: Context, todoId: Long) {
-        WorkManager.getInstance(context)
-            .cancelUniqueWork("todo_notification_$todoId")
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        val intent = Intent(context, TodoAlarmReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            todoId.toInt(),
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
+        )
+
+        pendingIntent?.let {
+            alarmManager.cancel(it)
+            it.cancel()
+        }
     }
 
     fun rescheduleAllNotifications(context: Context, todos: List<TodoEntity>) {

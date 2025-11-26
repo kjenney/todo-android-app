@@ -85,6 +85,12 @@
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
+
+        <!-- Receiver for todo notifications -->
+        <receiver
+            android:name=".notifications.TodoAlarmReceiver"
+            android:enabled="true"
+            android:exported="false" />
     </application>
 
 </manifest>
