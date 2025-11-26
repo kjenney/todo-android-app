@@ -91,6 +91,12 @@
             android:name=".notifications.TodoAlarmReceiver"
             android:enabled="true"
             android:exported="false" />
+
+        <!-- Receiver for notification actions (complete, snooze, etc.) -->
+        <receiver
+            android:name=".notifications.TodoActionReceiver"
+            android:enabled="true"
+            android:exported="false" />
     </application>
 
 </manifest>

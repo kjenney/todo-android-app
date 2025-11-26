@@ -58,6 +58,18 @@ class TodoAlarmReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        // Create intent for "Complete" action
+        val completeIntent = Intent(context, TodoActionReceiver::class.java).apply {
+            putExtra("TODO_ID", todoId)
+            putExtra("ACTION", "COMPLETE")
+        }
+        val completePendingIntent = PendingIntent.getBroadcast(
+            context,
+            (todoId + 10000).toInt(), // Different request code to avoid conflicts
+            completeIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Todo Reminder")
@@ -66,6 +78,11 @@ class TodoAlarmReceiver : BroadcastReceiver() {
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Complete",
+                completePendingIntent
+            )
             .build()
 
         notificationManager.notify(todoId.toInt(), notification)
