@@ -10,6 +10,7 @@ import androidx.lifecycle.switchMap
 import androidx.lifecycle.viewModelScope
 import com.example.todoapp.data.*
 import com.example.todoapp.notifications.TodoNotificationScheduler
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class TodoViewModel(application: Application) : AndroidViewModel(application) {
@@ -131,9 +132,9 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     fun getAllTodosForExport(callback: (List<TodoEntity>) -> Unit) {
         viewModelScope.launch {
             val allTodos = repository.getAllTodos()
-            allTodos.collect { todos ->
-                callback(todos)
-            }
+            // Use first() to get the current value only once, not continuously
+            val todos = allTodos.first()
+            callback(todos)
         }
     }
 
