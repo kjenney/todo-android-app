@@ -3,6 +3,7 @@ package com.example.todoapp
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.Espresso.openActionBarOverflowOrOptionsMenu
 import androidx.test.espresso.action.ViewActions.*
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.contrib.RecyclerViewActions
@@ -32,7 +33,30 @@ class TodoSelectionWithDataTest {
 
     @Before
     fun setup() {
-        // Wait for activity to load
+        // Wait for activity to fully load with retry logic
+        var attempts = 0
+        var fabFound = false
+
+        while (attempts < 5 && !fabFound) {
+            Thread.sleep(1000)
+            try {
+                onView(withId(R.id.fab))
+                    .check(matches(isDisplayed()))
+                fabFound = true
+            } catch (e: Exception) {
+                attempts++
+                if (attempts >= 5) {
+                    throw AssertionError("FAB not found after 5 attempts. Activity may not have loaded properly.", e)
+                }
+            }
+        }
+
+        // Switch to "All Todos" view so our test todos (without due dates) will be visible
+        openActionBarOverflowOrOptionsMenu(
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        )
+        Thread.sleep(300)
+        onView(withText("All Todos")).perform(click())
         Thread.sleep(500)
 
         // Add multiple test todos to ensure we have data
@@ -43,24 +67,28 @@ class TodoSelectionWithDataTest {
         addTestTodo("Test Todo 5")
 
         // Wait for todos to be added and displayed
-        Thread.sleep(1000)
+        Thread.sleep(1500)
     }
 
     private fun addTestTodo(todoText: String) {
         // Click FAB to open add todo screen
         onView(withId(R.id.fab)).perform(click())
 
-        // Wait for activity to open
-        Thread.sleep(300)
+        // Wait for AddTodoActivity to open and views to be ready
+        Thread.sleep(500)
 
         // Enter todo text
-        onView(withId(R.id.todoTextInput)).perform(typeText(todoText), closeSoftKeyboard())
+        onView(withId(R.id.todoTextInput))
+            .perform(typeText(todoText), closeSoftKeyboard())
+
+        // Wait for keyboard to close
+        Thread.sleep(200)
 
         // Save the todo
         onView(withId(R.id.saveButton)).perform(click())
 
-        // Wait for activity to close
-        Thread.sleep(300)
+        // Wait for activity to close and return to MainActivity
+        Thread.sleep(500)
     }
 
     @Test
