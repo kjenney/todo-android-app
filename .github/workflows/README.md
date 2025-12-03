@@ -2,10 +2,26 @@
 
 This directory contains automated build workflows for the Todo App.
 
+## Workflow Strategy
+
+**On Pull Requests:**
+- ✅ Run all tests (unit + instrumented)
+- ❌ Don't build APKs (saves CI time and resources)
+- 📊 Test results appear in PR checks
+
+**On Push to Main:**
+- ✅ Run all tests
+- ✅ Build debug and release APKs
+- 📦 APKs available as downloadable artifacts
+
+**On Version Tags:**
+- 🚀 Build signed release APK
+- 📋 Create GitHub Release with APK attached
+
 ## Workflows
 
 ### 1. Build APK (`build-apk.yml`)
-**Trigger:** Runs on every push/PR to `main` branch
+**Trigger:** Runs on every push to `main` branch (not on PRs)
 
 **What it does:**
 - Builds debug APK automatically
@@ -18,7 +34,20 @@ This directory contains automated build workflows for the Todo App.
 3. Scroll to "Artifacts" section at the bottom
 4. Download `todo-app-debug.apk`
 
-### 2. Auto Release (`auto-release.yml`) 🆕
+### 2. Run Tests (`run-tests.yml`)
+**Trigger:** Runs on every push to `main` and every PR to `main`
+
+**What it does:**
+- Runs unit tests on Ubuntu
+- Runs instrumented tests on Android emulator (API 29)
+- Uploads test results as artifacts (30 day retention)
+- Reports test failures in the PR/commit status
+
+**Test Coverage:**
+- Unit tests: Business logic and utility functions
+- Instrumented tests: UI interactions and RecyclerView selection behavior
+
+### 3. Auto Release (`auto-release.yml`) 🆕
 **Trigger:** Runs when changes are pushed to `main` that affect:
 - `app/**` directory
 - `build.gradle`
@@ -56,7 +85,7 @@ git commit -m "BREAKING CHANGE: Change database schema"
 5. Automatically triggers build-signed-release workflow
 6. Release appears in GitHub Releases with APK attached
 
-### 3. Build Signed Release APK (`build-signed-release.yml`)
+### 4. Build Signed Release APK (`build-signed-release.yml`)
 **Trigger:** Runs only on version tags (e.g., `v1.0.0`)
 - Can be triggered manually by pushing a tag
 - Automatically triggered by Auto Release workflow
