@@ -55,10 +55,10 @@ class TodoSelectionWithDataTest {
         Thread.sleep(300)
 
         // Enter todo text
-        onView(withId(R.id.editTextTodo)).perform(typeText(todoText), closeSoftKeyboard())
+        onView(withId(R.id.todoTextInput)).perform(typeText(todoText), closeSoftKeyboard())
 
         // Save the todo
-        onView(withId(R.id.buttonSave)).perform(click())
+        onView(withId(R.id.saveButton)).perform(click())
 
         // Wait for activity to close
         Thread.sleep(300)
