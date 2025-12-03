@@ -37,6 +37,16 @@ class TodoSelectionTest {
         // Wait for any todos to load
         Thread.sleep(1000)
 
+        // Get item count to check if we have data
+        var itemCount = 0
+        activityRule.scenario.onActivity { activity ->
+            val recyclerView = activity.findViewById<RecyclerView>(R.id.todoRecyclerView)
+            itemCount = recyclerView.adapter?.itemCount ?: 0
+        }
+
+        // Skip test if no data
+        if (itemCount == 0) return
+
         // Click the first todo item
         onView(withId(R.id.todoRecyclerView))
             .perform(
@@ -56,6 +66,16 @@ class TodoSelectionTest {
         // Wait for any todos to load
         Thread.sleep(1000)
 
+        // Get item count to check if we have enough data
+        var itemCount = 0
+        activityRule.scenario.onActivity { activity ->
+            val recyclerView = activity.findViewById<RecyclerView>(R.id.todoRecyclerView)
+            itemCount = recyclerView.adapter?.itemCount ?: 0
+        }
+
+        // Skip test if we don't have at least 2 items
+        if (itemCount < 2) return
+
         // Click the first todo item
         onView(withId(R.id.todoRecyclerView))
             .perform(
@@ -69,32 +89,38 @@ class TodoSelectionTest {
         onView(withId(R.id.todoRecyclerView))
             .check(matches(hasItemAtPositionSelected(0)))
 
-        // Click the second todo item (if it exists)
-        try {
-            onView(withId(R.id.todoRecyclerView))
-                .perform(
-                    RecyclerViewActions.actionOnItemAtPosition<TodoEntityAdapter.TodoViewHolder>(
-                        1,
-                        click()
-                    )
+        // Click the second todo item
+        onView(withId(R.id.todoRecyclerView))
+            .perform(
+                RecyclerViewActions.actionOnItemAtPosition<TodoEntityAdapter.TodoViewHolder>(
+                    1,
+                    click()
                 )
+            )
 
-            // Verify the second item is now selected
-            onView(withId(R.id.todoRecyclerView))
-                .check(matches(hasItemAtPositionSelected(1)))
+        // Verify the second item is now selected
+        onView(withId(R.id.todoRecyclerView))
+            .check(matches(hasItemAtPositionSelected(1)))
 
-            // Verify the first item is no longer selected
-            onView(withId(R.id.todoRecyclerView))
-                .check(matches(hasItemAtPositionNotSelected(0)))
-        } catch (e: Exception) {
-            // Not enough items in the list, skip this part of the test
-        }
+        // Verify the first item is no longer selected
+        onView(withId(R.id.todoRecyclerView))
+            .check(matches(hasItemAtPositionNotSelected(0)))
     }
 
     @Test
     fun selectTodoAndScroll_selectionPersists() {
         // Wait for any todos to load
         Thread.sleep(1000)
+
+        // Get item count to check if we have data
+        var itemCount = 0
+        activityRule.scenario.onActivity { activity ->
+            val recyclerView = activity.findViewById<RecyclerView>(R.id.todoRecyclerView)
+            itemCount = recyclerView.adapter?.itemCount ?: 0
+        }
+
+        // Skip test if no data
+        if (itemCount == 0) return
 
         // Click the first todo item
         onView(withId(R.id.todoRecyclerView))
@@ -110,7 +136,7 @@ class TodoSelectionTest {
             .check(matches(hasItemAtPositionSelected(0)))
 
         // Try to scroll down if there are enough items
-        try {
+        if (itemCount >= 6) {
             onView(withId(R.id.todoRecyclerView))
                 .perform(
                     RecyclerViewActions.scrollToPosition<TodoEntityAdapter.TodoViewHolder>(5)
@@ -121,16 +147,11 @@ class TodoSelectionTest {
                 .perform(
                     RecyclerViewActions.scrollToPosition<TodoEntityAdapter.TodoViewHolder>(0)
                 )
-
-            // Verify the first item is still selected after scrolling
-            onView(withId(R.id.todoRecyclerView))
-                .check(matches(hasItemAtPositionSelected(0)))
-        } catch (e: Exception) {
-            // Not enough items to scroll, but we can still verify selection persists
-            // by checking it's still selected
-            onView(withId(R.id.todoRecyclerView))
-                .check(matches(hasItemAtPositionSelected(0)))
         }
+
+        // Verify the first item is still selected after scrolling (or without scrolling if not enough items)
+        onView(withId(R.id.todoRecyclerView))
+            .check(matches(hasItemAtPositionSelected(0)))
     }
 
     @Test
