@@ -22,11 +22,14 @@ class TodoEntityAdapter(
     private val onItemClick: (TodoEntity) -> Unit
 ) : ListAdapter<TodoEntity, TodoEntityAdapter.TodoViewHolder>(TodoDiffCallback()) {
 
+    private var selectedTodoId: Long? = null
+
     class TodoViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val checkBox: CheckBox = view.findViewById(R.id.todoCheckBox)
         val dueDateText: TextView = view.findViewById(R.id.dueDateText)
         val recurrenceText: TextView = view.findViewById(R.id.recurrenceText)
         val deleteButton: ImageButton = view.findViewById(R.id.deleteButton)
+        val cardView: View = view
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TodoViewHolder {
@@ -61,6 +64,9 @@ class TodoEntityAdapter(
             holder.recurrenceText.visibility = View.GONE
         }
 
+        // Apply selection state
+        holder.cardView.isSelected = todo.id == selectedTodoId
+
         holder.checkBox.setOnCheckedChangeListener(null) // Remove old listener
         holder.checkBox.setOnCheckedChangeListener { _, _ ->
             onToggleComplete(todo)
@@ -71,6 +77,19 @@ class TodoEntityAdapter(
         }
 
         holder.itemView.setOnClickListener {
+            // Update selection state
+            val previousSelectedId = selectedTodoId
+            selectedTodoId = todo.id
+
+            // Notify adapter to update the previously selected item and the new one
+            if (previousSelectedId != null) {
+                val previousPosition = currentList.indexOfFirst { it.id == previousSelectedId }
+                if (previousPosition != -1) {
+                    notifyItemChanged(previousPosition)
+                }
+            }
+            notifyItemChanged(position)
+
             onItemClick(todo)
         }
     }

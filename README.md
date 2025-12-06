@@ -175,6 +175,48 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
+## Testing
+
+The project includes comprehensive instrumented tests using Espresso.
+
+### Running Tests Locally
+
+**Prerequisites:**
+- Android device or emulator running (API 24+)
+- ADB connection established
+
+**Run all instrumented tests:**
+```bash
+./gradlew connectedAndroidTest
+```
+
+**Run specific test class:**
+```bash
+./gradlew connectedAndroidTest --tests "com.example.todoapp.TodoSelectionTest"
+```
+
+**View test results:**
+- HTML Report: `app/build/reports/androidTests/connected/index.html`
+- XML Results: `app/build/outputs/androidTest-results/`
+
+### Test Coverage
+
+**Selection Tests:**
+- Visual feedback when selecting todos
+- Selection persistence after scrolling
+- Single selection enforcement (only one item selected at a time)
+- Selection state retention through RecyclerView recycling
+
+See `app/src/androidTest/java/com/example/todoapp/README.md` for detailed test documentation.
+
+### Automated Testing with GitHub Actions
+
+Tests automatically run on every pull request and push to main:
+- Unit tests run on Ubuntu
+- Instrumented tests run on Android emulator (API 29)
+- Test results available as artifacts for 30 days
+- Workflow: `.github/workflows/run-tests.yml`
+
 ## Usage Guide
 
 ### Adding a Todo
