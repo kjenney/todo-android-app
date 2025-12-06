@@ -27,12 +27,17 @@ class TodoAdapter(
     override fun onBindViewHolder(holder: TodoViewHolder, position: Int) {
         val todo = todos[position]
 
+        // CRITICAL: Remove old listener BEFORE setting checkbox state
+        // to prevent triggering toggles during view recycling
+        holder.checkBox.setOnCheckedChangeListener(null)
+
         holder.checkBox.text = todo.text
         holder.checkBox.isChecked = todo.isCompleted
 
         // Update text style based on completion status
         updateTextStyle(holder.checkBox, todo.isCompleted)
 
+        // Set new listener AFTER setting checkbox state
         holder.checkBox.setOnCheckedChangeListener { _, isChecked ->
             todo.isCompleted = isChecked
             updateTextStyle(holder.checkBox, isChecked)

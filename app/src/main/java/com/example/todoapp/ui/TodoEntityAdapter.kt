@@ -41,6 +41,10 @@ class TodoEntityAdapter(
     override fun onBindViewHolder(holder: TodoViewHolder, position: Int) {
         val todo = getItem(position)
 
+        // CRITICAL: Remove old listener BEFORE setting checkbox state
+        // to prevent triggering toggles during view recycling
+        holder.checkBox.setOnCheckedChangeListener(null)
+
         holder.checkBox.text = todo.text
         holder.checkBox.isChecked = todo.isCompleted
 
@@ -67,7 +71,7 @@ class TodoEntityAdapter(
         // Apply selection state
         holder.cardView.isSelected = todo.id == selectedTodoId
 
-        holder.checkBox.setOnCheckedChangeListener(null) // Remove old listener
+        // Set new listener AFTER setting checkbox state
         holder.checkBox.setOnCheckedChangeListener { _, _ ->
             onToggleComplete(todo)
         }

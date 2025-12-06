@@ -179,35 +179,239 @@ git push origin v1.0.0
 
 The project includes comprehensive instrumented tests using Espresso.
 
-### Running Tests Locally
+### Prerequisites for Local Testing
 
-**Prerequisites:**
-- Android device or emulator running (API 24+)
-- ADB connection established
+**Option 1: Using Docker (Recommended)**
 
-**Run all instrumented tests:**
+Docker provides a consistent environment with Java and Android SDK pre-configured:
+
 ```bash
+docker run --rm -v "$(pwd)":/app -w /app thyrlian/android-sdk:latest ./gradlew assembleDebug
+```
+
+For full instrumented test support with emulator, see the Docker Compose setup below.
+
+**Option 2: Local Installation**
+
+- **Java 17** (JDK): Required for building and running tests
+  ```bash
+  # macOS (Homebrew)
+  brew install openjdk@17
+
+  # Ubuntu/Debian
+  sudo apt install openjdk-17-jdk
+
+  # Verify installation
+  java -version
+  ```
+
+- **Android SDK**: Install via Android Studio or command line tools
+  - Download from: https://developer.android.com/studio
+  - Required SDK components: Platform SDK 34, Build Tools, Platform Tools
+
+- **Android Emulator** or physical device (API 24+)
+
+**Environment Setup (for local installation):**
+```bash
+# Set JAVA_HOME (add to ~/.bashrc or ~/.zshrc)
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)  # macOS
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk     # Linux
+
+# Set ANDROID_HOME (add to ~/.bashrc or ~/.zshrc)
+export ANDROID_HOME=$HOME/Library/Android/sdk     # macOS
+export ANDROID_HOME=$HOME/Android/Sdk             # Linux
+export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
+```
+
+### Running Tests with Docker
+
+**Unit Tests (no emulator required):**
+```bash
+# Run unit tests
+docker run --rm -v "$(pwd)":/app -w /app thyrlian/android-sdk:latest ./gradlew test
+
+# View results after running
+open app/build/reports/tests/testDebugUnitTest/index.html
+```
+
+**Build APK for Testing:**
+```bash
+# Build debug APK
+docker run --rm -v "$(pwd)":/app -w /app thyrlian/android-sdk:latest ./gradlew assembleDebug
+
+# Build test APK
+docker run --rm -v "$(pwd)":/app -w /app thyrlian/android-sdk:latest ./gradlew assembleDebugAndroidTest
+```
+
+**Instrumented Tests with Docker + Local Emulator:**
+
+For instrumented tests, you can use Docker for building and a local emulator for running:
+
+```bash
+# 1. Build test APKs with Docker
+docker run --rm -v "$(pwd)":/app -w /app thyrlian/android-sdk:latest \
+  ./gradlew assembleDebug assembleDebugAndroidTest
+
+# 2. Start your local emulator (see "Setting Up an Android Emulator" below)
+emulator -avd test_device &
+adb wait-for-device
+
+# 3. Install and run tests
+adb install app/build/outputs/apk/debug/app-debug.apk
+adb install app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb shell am instrument -w com.example.todoapp.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+### Setting Up an Android Emulator
+
+**Option 1: Using Android Studio**
+1. Open Android Studio → Tools → Device Manager
+2. Click "Create Device"
+3. Select a device (e.g., Pixel 6)
+4. Select system image: API 29 (Android 10) or higher
+5. Click "Finish" and start the emulator
+
+**Option 2: Using Command Line**
+```bash
+# List available system images
+sdkmanager --list | grep system-images
+
+# Install a system image (API 29 recommended for CI parity)
+sdkmanager "system-images;android-29;default;x86_64"
+
+# Create an AVD (Android Virtual Device)
+avdmanager create avd -n test_device -k "system-images;android-29;default;x86_64" --device "pixel"
+
+# List available emulators
+emulator -list-avds
+
+# Start the emulator
+emulator -avd test_device -no-window -gpu swiftshader_indirect &
+
+# Wait for emulator to boot (check with adb)
+adb wait-for-device
+adb shell getprop sys.boot_completed  # Returns 1 when ready
+```
+
+### Running Unit Tests
+
+Unit tests run on the JVM without an emulator:
+
+```bash
+# Run all unit tests
+./gradlew test
+
+# Run with detailed output
+./gradlew test --info
+
+# View results
+open app/build/reports/tests/testDebugUnitTest/index.html
+```
+
+### Running Instrumented Tests
+
+Instrumented tests require a running emulator or connected device:
+
+```bash
+# Verify device is connected
+adb devices
+
+# Run all instrumented tests
 ./gradlew connectedAndroidTest
+
+# Run with stacktrace for debugging
+./gradlew connectedAndroidTest --stacktrace
+
+# Run a specific test class
+./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.todoapp.TodoSelectionTest
+
+# Run a specific test method
+./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.todoapp.TodoSelectionTest#clickTodoItem_showsSelectionState
+
+# Run tests matching a pattern
+./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.package=com.example.todoapp
 ```
 
-**Run specific test class:**
+### Viewing Test Results
+
 ```bash
-./gradlew connectedAndroidTest --tests "com.example.todoapp.TodoSelectionTest"
-```
+# Instrumented test HTML report
+open app/build/reports/androidTests/connected/index.html
 
-**View test results:**
-- HTML Report: `app/build/reports/androidTests/connected/index.html`
-- XML Results: `app/build/outputs/androidTest-results/`
+# Instrumented test XML results (for CI parsing)
+ls app/build/outputs/androidTest-results/connected/
+
+# Unit test HTML report
+open app/build/reports/tests/testDebugUnitTest/index.html
+```
 
 ### Test Coverage
 
-**Selection Tests:**
+**Selection Tests (`TodoSelectionTest.kt`):**
 - Visual feedback when selecting todos
 - Selection persistence after scrolling
 - Single selection enforcement (only one item selected at a time)
 - Selection state retention through RecyclerView recycling
 
-See `app/src/androidTest/java/com/example/todoapp/README.md` for detailed test documentation.
+**Selection with Data Tests (`TodoSelectionWithDataTest.kt`):**
+- Tests that create their own test data
+- More reliable for fresh installations
+
+**Completion Persistence Tests (`TodoCompletionPersistenceTest.kt`):**
+- Completion state persists when switching views (Today/All Todos)
+- Completion state persists after scrolling in long lists
+- Multiple toggle operations maintain consistent state
+
+### Troubleshooting
+
+**"Unable to locate a Java Runtime"**
+```bash
+# Option 1: Use Docker instead (recommended)
+docker run --rm -v "$(pwd)":/app -w /app thyrlian/android-sdk:latest ./gradlew test
+
+# Option 2: Install Java 17 locally
+brew install openjdk@17
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+```
+
+**Docker build is slow**
+```bash
+# Create a Gradle cache volume for faster subsequent builds
+docker run --rm \
+  -v "$(pwd)":/app \
+  -v gradle-cache:/root/.gradle \
+  -w /app \
+  thyrlian/android-sdk:latest ./gradlew test
+```
+
+**"No connected devices"**
+```bash
+# Check if emulator is running
+adb devices
+
+# If empty, start an emulator
+emulator -avd test_device &
+adb wait-for-device
+```
+
+**"Test timed out"**
+- Increase timeout: `./gradlew connectedAndroidTest --info -Pandroid.testInstrumentationRunnerArguments.timeout_msec=300000`
+- Check if emulator is responsive: `adb shell input keyevent 82`
+
+**"Could not install APK"**
+```bash
+# Clean and rebuild
+./gradlew clean
+./gradlew assembleDebug assembleDebugAndroidTest
+./gradlew connectedAndroidTest
+```
+
+**Tests pass locally but fail on CI**
+- CI uses API 29 emulator with specific settings
+- Run locally with similar config:
+  ```bash
+  emulator -avd test_device -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+  ```
 
 ### Automated Testing with GitHub Actions
 
