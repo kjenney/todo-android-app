@@ -3,135 +3,242 @@ package com.example.todoapp.ui
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
+import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.example.todoapp.R
-import com.kizitonwose.calendar.core.CalendarDay
-import com.kizitonwose.calendar.core.CalendarMonth
-import com.kizitonwose.calendar.core.DayPosition
-import com.kizitonwose.calendar.view.CalendarView
-import com.kizitonwose.calendar.view.MonthDayBinder
-import com.kizitonwose.calendar.view.ViewContainer
+import com.example.todoapp.data.TodoEntity
 import java.text.SimpleDateFormat
-import java.time.DayOfWeek
-import java.time.YearMonth
-import java.time.temporal.WeekFields
 import java.util.*
 
 class CalendarActivity : AppCompatActivity() {
 
-    private lateinit var calendarView: CalendarView
-    private lateinit var selectedDateText: TextView
-    private lateinit var todosRecyclerView: RecyclerView
-    private lateinit var emptyDateView: TextView
-    private lateinit var todoAdapter: TodoEntityAdapter
+    private lateinit var weekRangeText: TextView
+    private lateinit var prevWeekButton: Button
+    private lateinit var nextWeekButton: Button
+    private lateinit var weekDaysContainer: LinearLayout
 
     private val viewModel: TodoViewModel by viewModels()
-    private var selectedDate: Calendar? = null
+    private var currentWeekStart: Calendar = Calendar.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_calendar)
+        setContentView(R.layout.activity_calendar_waterfall)
 
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = "Calendar"
+        supportActionBar?.title = "Weekly Waterfall"
 
         initViews()
-        setupCalendar()
-        setupTodosList()
+        setupWeekNavigation()
+
+        // Set to start of current week
+        currentWeekStart = getWeekStart(Calendar.getInstance())
+        loadWeekData()
     }
 
     private fun initViews() {
-        calendarView = findViewById(R.id.calendarView)
-        selectedDateText = findViewById(R.id.selectedDateText)
-        todosRecyclerView = findViewById(R.id.todosForDateRecyclerView)
-        emptyDateView = findViewById(R.id.emptyDateView)
+        weekRangeText = findViewById(R.id.weekRangeText)
+        prevWeekButton = findViewById(R.id.prevWeekButton)
+        nextWeekButton = findViewById(R.id.nextWeekButton)
+        weekDaysContainer = findViewById(R.id.weekDaysContainer)
     }
 
-    private fun setupCalendar() {
-        val currentMonth = YearMonth.now()
-        val startMonth = currentMonth.minusMonths(12)
-        val endMonth = currentMonth.plusMonths(12)
-        val firstDayOfWeek = WeekFields.of(Locale.getDefault()).firstDayOfWeek
+    private fun setupWeekNavigation() {
+        prevWeekButton.setOnClickListener {
+            currentWeekStart.add(Calendar.WEEK_OF_YEAR, -1)
+            loadWeekData()
+        }
 
-        calendarView.setup(startMonth, endMonth, firstDayOfWeek)
-        calendarView.scrollToMonth(currentMonth)
+        nextWeekButton.setOnClickListener {
+            currentWeekStart.add(Calendar.WEEK_OF_YEAR, 1)
+            loadWeekData()
+        }
+    }
 
-        calendarView.dayBinder = object : MonthDayBinder<DayViewContainer> {
-            override fun create(view: View) = DayViewContainer(view)
+    private fun getWeekStart(date: Calendar): Calendar {
+        val cal = date.clone() as Calendar
+        cal.set(Calendar.DAY_OF_WEEK, cal.firstDayOfWeek)
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return cal
+    }
 
-            override fun bind(container: DayViewContainer, data: CalendarDay) {
-                container.textView.text = data.date.dayOfMonth.toString()
+    private fun loadWeekData() {
+        // Update week range text
+        val weekEnd = currentWeekStart.clone() as Calendar
+        weekEnd.add(Calendar.DAY_OF_YEAR, 6)
 
-                if (data.position == DayPosition.MonthDate) {
-                    container.textView.setTextColor(Color.BLACK)
-                    container.textView.alpha = 1f
-                } else {
-                    container.textView.setTextColor(Color.GRAY)
-                    container.textView.alpha = 0.3f
-                }
+        val dateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
+        weekRangeText.text = "${dateFormat.format(currentWeekStart.time)} - ${dateFormat.format(weekEnd.time)}"
 
-                container.view.setOnClickListener {
-                    if (data.position == DayPosition.MonthDate) {
-                        onDateSelected(data)
+        // Clear existing day columns
+        weekDaysContainer.removeAllViews()
+
+        // Create 7 day columns for the week
+        for (i in 0..6) {
+            val dayDate = currentWeekStart.clone() as Calendar
+            dayDate.add(Calendar.DAY_OF_YEAR, i)
+            createDayColumn(dayDate)
+        }
+
+        // Load todos for all days
+        loadTodosForWeek()
+    }
+
+    private fun createDayColumn(date: Calendar) {
+        val columnView = LayoutInflater.from(this).inflate(
+            R.layout.waterfall_day_column,
+            weekDaysContainer,
+            false
+        )
+
+        val dayNameText = columnView.findViewById<TextView>(R.id.dayNameText)
+        val dayDateText = columnView.findViewById<TextView>(R.id.dayDateText)
+        val todosContainer = columnView.findViewById<LinearLayout>(R.id.todosContainer)
+        val todoCountText = columnView.findViewById<TextView>(R.id.todoCountText)
+
+        // Set day name and date
+        val dayNameFormat = SimpleDateFormat("EEE", Locale.getDefault())
+        val dayDateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
+
+        dayNameText.text = dayNameFormat.format(date.time)
+        dayDateText.text = dayDateFormat.format(date.time)
+
+        // Highlight today
+        val today = Calendar.getInstance()
+        if (isSameDay(date, today)) {
+            columnView.setBackgroundColor(Color.parseColor("#E8F5E9"))
+            dayNameText.setTextColor(Color.parseColor("#2E7D32"))
+        }
+
+        // Store date as tag for later use
+        columnView.tag = date.timeInMillis
+
+        weekDaysContainer.addView(columnView)
+    }
+
+    private fun loadTodosForWeek() {
+        // Switch to ALL mode to get all todos, then filter by week
+        viewModel.setViewMode(TodoViewModel.ViewMode.ALL)
+
+        viewModel.todos.observe(this) { allTodos ->
+            // Group todos by day
+            val todosByDay = mutableMapOf<Long, MutableList<TodoEntity>>()
+
+            for (i in 0..6) {
+                val dayDate = currentWeekStart.clone() as Calendar
+                dayDate.add(Calendar.DAY_OF_YEAR, i)
+                val dayStart = dayDate.timeInMillis
+
+                todosByDay[dayStart] = mutableListOf()
+            }
+
+            // Filter and group todos
+            allTodos.forEach { todo ->
+                if (todo.dueDateTime != null) {
+                    val todoDate = Calendar.getInstance()
+                    todoDate.timeInMillis = todo.dueDateTime
+
+                    // Find which day this todo belongs to
+                    for (i in 0..6) {
+                        val dayDate = currentWeekStart.clone() as Calendar
+                        dayDate.add(Calendar.DAY_OF_YEAR, i)
+
+                        if (isSameDay(todoDate, dayDate)) {
+                            todosByDay[dayDate.timeInMillis]?.add(todo)
+                            break
+                        }
                     }
                 }
+            }
+
+            // Update each day column with its todos
+            for (i in 0 until weekDaysContainer.childCount) {
+                val columnView = weekDaysContainer.getChildAt(i)
+                val dayTimestamp = columnView.tag as Long
+                val todosForDay = todosByDay[dayTimestamp] ?: emptyList()
+
+                updateDayColumn(columnView, todosForDay)
             }
         }
     }
 
-    private fun setupTodosList() {
-        todoAdapter = TodoEntityAdapter(
-            onToggleComplete = { todo -> viewModel.toggleTodoCompletion(todo) },
-            onDeleteClick = { todo -> viewModel.deleteTodo(todo) },
-            onItemClick = { todo ->
+    private fun updateDayColumn(columnView: View, todos: List<TodoEntity>) {
+        val todosContainer = columnView.findViewById<LinearLayout>(R.id.todosContainer)
+        val todoCountText = columnView.findViewById<TextView>(R.id.todoCountText)
+
+        todosContainer.removeAllViews()
+
+        // Sort todos by time
+        val sortedTodos = todos.sortedBy { it.dueDateTime ?: Long.MAX_VALUE }
+
+        sortedTodos.forEach { todo ->
+            val todoItemView = LayoutInflater.from(this).inflate(
+                R.layout.waterfall_todo_item,
+                todosContainer,
+                false
+            )
+
+            val todoText = todoItemView.findViewById<TextView>(R.id.waterfallTodoText)
+            val todoTime = todoItemView.findViewById<TextView>(R.id.waterfallTodoTime)
+            val statusBar = todoItemView.findViewById<View>(R.id.waterfallStatusBar)
+
+            todoText.text = todo.text
+
+            // Format time
+            if (todo.dueDateTime != null) {
+                val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+                todoTime.text = timeFormat.format(Date(todo.dueDateTime))
+                todoTime.visibility = View.VISIBLE
+            } else {
+                todoTime.visibility = View.GONE
+            }
+
+            // Set status color
+            if (todo.isCompleted) {
+                statusBar.setBackgroundColor(Color.parseColor("#4CAF50")) // Green
+                todoText.alpha = 0.6f
+            } else {
+                val now = System.currentTimeMillis()
+                if (todo.dueDateTime != null && todo.dueDateTime < now) {
+                    statusBar.setBackgroundColor(Color.parseColor("#F44336")) // Red (overdue)
+                } else {
+                    statusBar.setBackgroundColor(Color.parseColor("#2196F3")) // Blue (pending)
+                }
+            }
+
+            // Click to view/edit todo
+            todoItemView.setOnClickListener {
                 val intent = Intent(this, AddTodoActivity::class.java)
                 intent.putExtra("TODO_ID", todo.id)
                 startActivity(intent)
             }
-        )
-        todosRecyclerView.adapter = todoAdapter
-        todosRecyclerView.layoutManager = LinearLayoutManager(this)
+
+            todosContainer.addView(todoItemView)
+        }
+
+        // Update count
+        val completedCount = todos.count { it.isCompleted }
+        todoCountText.text = if (todos.isEmpty()) {
+            "No todos"
+        } else {
+            "${todos.size} todos ($completedCount done)"
+        }
     }
 
-    private fun onDateSelected(day: CalendarDay) {
-        selectedDate = Calendar.getInstance().apply {
-            set(Calendar.YEAR, day.date.year)
-            set(Calendar.MONTH, day.date.monthValue - 1)
-            set(Calendar.DAY_OF_MONTH, day.date.dayOfMonth)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-
-        val format = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
-        selectedDateText.text = format.format(selectedDate!!.time)
-
-        // Load todos for this date
-        viewModel.setSelectedDate(selectedDate!!.timeInMillis)
-        viewModel.todos.observe(this) { todos ->
-            todoAdapter.submitList(todos)
-            if (todos.isEmpty()) {
-                emptyDateView.visibility = View.VISIBLE
-                todosRecyclerView.visibility = View.GONE
-            } else {
-                emptyDateView.visibility = View.GONE
-                todosRecyclerView.visibility = View.VISIBLE
-            }
-        }
+    private fun isSameDay(date1: Calendar, date2: Calendar): Boolean {
+        return date1.get(Calendar.YEAR) == date2.get(Calendar.YEAR) &&
+                date1.get(Calendar.DAY_OF_YEAR) == date2.get(Calendar.DAY_OF_YEAR)
     }
 
     override fun onSupportNavigateUp(): Boolean {
         finish()
         return true
-    }
-
-    class DayViewContainer(view: View) : ViewContainer(view) {
-        val textView: TextView = view.findViewById(R.id.calendarDayText)
     }
 }

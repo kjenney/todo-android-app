@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FFFFFF">
+
+    <!-- Week Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="#F5F5F5">
+
+        <TextView
+            android:id="@+id/weekRangeText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:text="Current Week" />
+
+        <Button
+            android:id="@+id/prevWeekButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:text="&lt;"
+            android:textSize="18sp"
+            style="?android:attr/borderlessButtonStyle" />
+
+        <Button
+            android:id="@+id/nextWeekButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:text="&gt;"
+            android:textSize="18sp"
+            style="?android:attr/borderlessButtonStyle" />
+    </LinearLayout>
+
+    <!-- Waterfall Chart (Horizontal Scroll) -->
+    <HorizontalScrollView
+        android:id="@+id/waterfallScrollView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/weekDaysContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:padding="8dp" />
+
+    </HorizontalScrollView>
+
+</LinearLayout>

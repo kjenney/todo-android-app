@@ -39,7 +39,9 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 @LargeTest
-class TodoCompletionPersistenceTest {
+class TodoCompletionPersistenceTest : BaseInstrumentedTest() {
+
+    override val useSampleTodos = true
 
     @get:Rule
     val activityRule = ActivityScenarioRule(MainActivity::class.java)

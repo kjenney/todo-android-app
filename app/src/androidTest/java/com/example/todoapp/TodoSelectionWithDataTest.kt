@@ -22,11 +22,13 @@ import org.junit.runner.RunWith
 
 /**
  * Instrumented tests for Todo selection functionality with guaranteed test data.
- * These tests create test todos before running to ensure consistent test behavior.
+ * These tests use seeded data to ensure consistent test behavior.
  */
 @RunWith(AndroidJUnit4::class)
 @LargeTest
-class TodoSelectionWithDataTest {
+class TodoSelectionWithDataTest : BaseInstrumentedTest() {
+
+    override val useSampleTodos = true
 
     @get:Rule
     val activityRule = ActivityScenarioRule(MainActivity::class.java)
@@ -45,38 +47,14 @@ class TodoSelectionWithDataTest {
     }
 
     /**
-     * Helper to create a single test todo. Returns true if successful.
-     */
-    private fun tryCreateTestTodo(todoText: String): Boolean {
-        return try {
-            // Try to click FAB
-            onView(withId(R.id.fab)).perform(click())
-            Thread.sleep(500)
-
-            // Enter todo text
-            onView(withId(R.id.todoTextInput))
-                .perform(replaceText(todoText), closeSoftKeyboard())
-            Thread.sleep(200)
-
-            // Save the todo
-            onView(withId(R.id.saveButton)).perform(click())
-            Thread.sleep(500)
-
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    /**
-     * Setup that creates test todos if needed. If creation fails, tests will skip.
+     * Setup to switch to All Todos view for consistent testing.
      */
     @Before
     fun setup() {
-        // Wait for activity to load
-        Thread.sleep(2000)
+        // Wait for activity to load and data to be seeded
+        Thread.sleep(1500)
 
-        // Try to switch to All Todos view to see all items
+        // Switch to All Todos view to see all items
         try {
             openActionBarOverflowOrOptionsMenu(
                 androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
@@ -87,23 +65,6 @@ class TodoSelectionWithDataTest {
         } catch (e: Exception) {
             // If we can't switch views, that's okay - we'll work with what we have
         }
-
-        // Check if we already have test data
-        val existingCount = getItemCount()
-        if (existingCount >= 5) {
-            // Already have enough data, no need to create more
-            return
-        }
-
-        // Try to create test todos
-        for (i in 1..5) {
-            if (!tryCreateTestTodo("Test Todo $i")) {
-                // If we fail to create todos, tests will skip based on item count
-                break
-            }
-        }
-
-        Thread.sleep(1000)
     }
 
     @Test

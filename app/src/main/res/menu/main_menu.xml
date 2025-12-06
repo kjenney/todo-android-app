@@ -38,4 +38,9 @@
         android:title="Test Notification"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/action_seed_data"
+        android:title="Seed Sample Todos"
+        app:showAsAction="never" />
+
 </menu>

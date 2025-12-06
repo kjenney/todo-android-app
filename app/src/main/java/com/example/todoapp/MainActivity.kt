@@ -179,6 +179,10 @@ class MainActivity : AppCompatActivity() {
                 showTestNotification()
                 true
             }
+            R.id.action_seed_data -> {
+                seedSampleTodos()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -299,5 +303,22 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.import_failed)
         }
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
+    private fun seedSampleTodos() {
+        AlertDialog.Builder(this)
+            .setTitle("Seed Sample Todos")
+            .setMessage("This will add sample todos for testing. Continue?")
+            .setPositiveButton("Seed Data") { _, _ ->
+                val sampleTodos = com.example.todoapp.utils.TodoSeeder.generateSampleTodos()
+                viewModel.importTodos(sampleTodos)
+                Toast.makeText(
+                    this,
+                    "Added ${sampleTodos.size} sample todos",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 }
