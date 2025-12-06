@@ -1,0 +1,66 @@
+site_name: Todo App Documentation
+site_description: A feature-rich Android todo list application with recurring tasks, notifications, and calendar views
+site_author: Todo App Team
+repo_url: https://github.com/yourusername/todoapp
+repo_name: todoapp
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Features: features.md
+  - Getting Started:
+      - Building: building.md
+      - Testing: testing.md
+  - User Guide:
+      - Usage: usage.md
+      - Permissions: permissions.md
+  - Development:
+      - Architecture: architecture.md
+      - Database Schema: database.md
+      - Widgets: widgets.md
+      - Contributing: contributing.md
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/yourusername/todoapp

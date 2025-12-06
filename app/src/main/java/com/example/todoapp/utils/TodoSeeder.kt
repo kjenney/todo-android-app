@@ -231,7 +231,7 @@ object TodoSeeder {
                 recurrencePattern = RecurrencePattern(
                     type = RecurrenceType.WEEKLY,
                     interval = 1,
-                    daysOfWeek = listOf(7) // Sunday
+                    daysOfWeek = setOf(7) // Sunday
                 )
             )
         )

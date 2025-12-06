@@ -100,3 +100,7 @@ ksp/
 
 # Room schema export directory
 app/schemas/
+
+# MkDocs
+site/
+.cache/
