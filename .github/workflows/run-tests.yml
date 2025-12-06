@@ -98,16 +98,7 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            set +e
-            ./gradlew connectedAndroidTest --stacktrace
-            test_result=$?
-            echo "Tests completed with exit code: $test_result"
-            echo "Killing emulator..."
-            adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill; done
-            sleep 2
-            echo "Emulator killed"
-            exit $test_result
+          script: ./gradlew connectedAndroidTest --stacktrace
 
       - name: Upload instrumented test results
         uses: actions/upload-artifact@v4
