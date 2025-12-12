@@ -35,4 +35,10 @@ interface TodoDao {
 
     @Query("SELECT * FROM todos WHERE (id = :parentId OR parentTodoId = :parentId) AND dueDateTime >= :startTime AND dueDateTime <= :endTime AND isCompleted = 0")
     suspend fun getRelatedTodosByDateRange(parentId: Long, startTime: Long, endTime: Long): List<TodoEntity>
+
+    @Query("SELECT * FROM todos WHERE parentTodoId IS NULL")
+    suspend fun getAllParentTodos(): List<TodoEntity>
+
+    @Query("SELECT * FROM todos WHERE id = :parentId OR parentTodoId = :parentId ORDER BY dueDateTime DESC LIMIT 1")
+    suspend fun getLatestOccurrence(parentId: Long): TodoEntity?
 }
