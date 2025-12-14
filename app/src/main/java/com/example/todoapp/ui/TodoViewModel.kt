@@ -25,6 +25,11 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val _hideCompleted = MutableLiveData(false)
     val hideCompleted: LiveData<Boolean> = _hideCompleted
 
+    init {
+        // Generate missing recurrences and schedule notifications when app starts
+        generateAndScheduleRecurrences()
+    }
+
     private val rawTodos: LiveData<List<TodoEntity>> = viewMode.switchMap { mode ->
         when (mode) {
             ViewMode.ALL -> repository.getAllTodos().asLiveData()
@@ -58,6 +63,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setViewMode(mode: ViewMode) {
         _viewMode.value = mode
+        // Generate missing recurrences when switching views
+        generateAndScheduleRecurrences()
     }
 
     fun setSelectedDate(date: Long) {
@@ -148,6 +155,22 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                     insertedTodo?.let {
                         TodoNotificationScheduler.scheduleTodoNotification(getApplication(), it)
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Generates missing recurring todo instances and schedules notifications for them.
+     * This is called when the app starts and when switching views.
+     */
+    private fun generateAndScheduleRecurrences() {
+        viewModelScope.launch {
+            val newlyCreatedTodos = repository.generateMissingRecurrences()
+            // Schedule notifications for all newly created todos
+            newlyCreatedTodos.forEach { todo ->
+                if (todo.notificationEnabled && todo.dueDateTime != null && !todo.isCompleted) {
+                    TodoNotificationScheduler.scheduleTodoNotification(getApplication(), todo)
                 }
             }
         }

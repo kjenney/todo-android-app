@@ -79,8 +79,9 @@ class TodoRepository(
      * Generates all missing recurring todo occurrences up to today.
      * This ensures that a new instance is created for each scheduled occurrence,
      * regardless of whether previous instances were completed.
+     * Returns the list of newly created todos.
      */
-    private suspend fun generateMissingRecurrences() {
+    suspend fun generateMissingRecurrences(): List<TodoEntity> {
         val now = System.currentTimeMillis()
         val todayEnd = Calendar.getInstance().apply {
             timeInMillis = now
@@ -89,6 +90,8 @@ class TodoRepository(
             set(Calendar.SECOND, 59)
             set(Calendar.MILLISECOND, 999)
         }.timeInMillis
+
+        val newlyCreatedTodos = mutableListOf<TodoEntity>()
 
         // Get all parent todos (those with recurrence patterns)
         val parentTodos = todoDao.getAllParentTodos()
@@ -110,19 +113,23 @@ class TodoRepository(
             val startFrom = latestOccurrence?.dueDateTime ?: parentTodo.dueDateTime ?: continue
 
             // Generate all missing occurrences from the latest one up to today
-            generateOccurrencesUpTo(parentTodo, startFrom, todayEnd)
+            val created = generateOccurrencesUpTo(parentTodo, startFrom, todayEnd)
+            newlyCreatedTodos.addAll(created)
         }
+
+        return newlyCreatedTodos
     }
 
     /**
      * Generates occurrences for a recurring todo from a start date up to an end date.
+     * Returns the list of newly created todos.
      */
-    private suspend fun generateOccurrencesUpTo(todo: TodoEntity, startFrom: Long, endDate: Long) {
+    private suspend fun generateOccurrencesUpTo(todo: TodoEntity, startFrom: Long, endDate: Long): List<TodoEntity> {
         val pattern = todo.recurrencePattern
-        var currentDate = startFrom
+        val newlyCreatedTodos = mutableListOf<TodoEntity>()
 
         val calendar = Calendar.getInstance().apply {
-            timeInMillis = currentDate
+            timeInMillis = startFrom
         }
 
         val maxIterations = 1000 // Safety limit
@@ -130,8 +137,6 @@ class TodoRepository(
 
         while (iterations < maxIterations) {
             // Calculate next occurrence date
-            val originalTime = calendar.timeInMillis
-
             when (pattern.type) {
                 RecurrenceType.HOURLY -> {
                     calendar.add(Calendar.HOUR_OF_DAY, pattern.interval)
@@ -198,11 +203,16 @@ class TodoRepository(
 
             // Check if this occurrence already exists
             if (!isDuplicateOccurrence(todo, newOccurrence)) {
-                todoDao.insert(newOccurrence)
+                val newId = todoDao.insert(newOccurrence)
+                // Fetch the inserted todo with its new ID
+                val insertedTodo = todoDao.getTodoById(newId)
+                insertedTodo?.let { newlyCreatedTodos.add(it) }
             }
 
             iterations++
         }
+
+        return newlyCreatedTodos
     }
 
     private suspend fun isDuplicateOccurrence(todo: TodoEntity, nextOccurrence: TodoEntity): Boolean {
