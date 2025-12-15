@@ -1,7 +1,5 @@
 package com.example.todoapp.utils
 
-import com.example.todoapp.data.RecurrencePattern
-import com.example.todoapp.data.RecurrenceType
 import com.example.todoapp.data.TodoEntity
 import java.util.*
 
@@ -121,11 +119,7 @@ object TodoSeeder {
                     set(Calendar.HOUR_OF_DAY, 10)
                     set(Calendar.MINUTE, 0)
                 }.timeInMillis,
-                isCompleted = false,
-                recurrencePattern = RecurrencePattern(
-                    type = RecurrenceType.DAILY,
-                    interval = 1
-                )
+                isCompleted = false
             )
         )
 
@@ -227,12 +221,7 @@ object TodoSeeder {
                     set(Calendar.HOUR_OF_DAY, 8)
                     set(Calendar.MINUTE, 0)
                 }.timeInMillis,
-                isCompleted = false,
-                recurrencePattern = RecurrencePattern(
-                    type = RecurrenceType.WEEKLY,
-                    interval = 1,
-                    daysOfWeek = setOf(7) // Sunday
-                )
+                isCompleted = false
             )
         )
         todos.add(

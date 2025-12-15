@@ -15,7 +15,7 @@ class AddTodoActivity : AppCompatActivity() {
 
     private lateinit var todoTextInput: TextInputEditText
     private lateinit var selectTimeButton: MaterialButton
-    private lateinit var selectedTimeText: TextView
+    private lateinit var selectedDateTimeText: TextView
     private lateinit var saveButton: MaterialButton
     private lateinit var cancelButton: MaterialButton
 
@@ -57,7 +57,7 @@ class AddTodoActivity : AppCompatActivity() {
     private fun initViews() {
         todoTextInput = findViewById(R.id.todoTextInput)
         selectTimeButton = findViewById(R.id.selectTimeButton)
-        selectedTimeText = findViewById(R.id.selectedTimeText)
+        selectedDateTimeText = findViewById(R.id.selectedDateTimeText)
         saveButton = findViewById(R.id.saveButton)
         cancelButton = findViewById(R.id.cancelButton)
     }
@@ -101,7 +101,7 @@ class AddTodoActivity : AppCompatActivity() {
 
         selectedDateTime = todayCalendar.timeInMillis
         val format = SimpleDateFormat("h:mm a", Locale.getDefault())
-        selectedTimeText.text = "Daily at ${format.format(Date(selectedDateTime!!))}"
+        selectedDateTimeText.text = "Daily at ${format.format(Date(selectedDateTime!!))}"
     }
 
     private fun loadTodoForEditing() {

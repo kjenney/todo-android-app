@@ -11,7 +11,6 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.todoapp.R
-import com.example.todoapp.data.RecurrenceType
 import com.example.todoapp.data.TodoEntity
 import java.text.SimpleDateFormat
 import java.util.*
@@ -51,22 +50,18 @@ class TodoEntityAdapter(
         // Update text style based on completion status
         updateTextStyle(holder.checkBox, todo.isCompleted)
 
-        // Display due date
+        // Display notification time
         if (todo.dueDateTime != null) {
-            val dateFormat = SimpleDateFormat("MMM dd, yyyy h:mm a", Locale.getDefault())
-            holder.dueDateText.text = dateFormat.format(Date(todo.dueDateTime))
+            val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+            holder.dueDateText.text = timeFormat.format(Date(todo.dueDateTime))
             holder.dueDateText.visibility = View.VISIBLE
         } else {
             holder.dueDateText.visibility = View.GONE
         }
 
-        // Display recurrence info
-        if (todo.recurrencePattern.type != RecurrenceType.NONE) {
-            holder.recurrenceText.text = getRecurrenceText(todo)
-            holder.recurrenceText.visibility = View.VISIBLE
-        } else {
-            holder.recurrenceText.visibility = View.GONE
-        }
+        // All todos are daily recurring
+        holder.recurrenceText.text = "Daily"
+        holder.recurrenceText.visibility = View.VISIBLE
 
         // Apply selection state
         holder.cardView.isSelected = todo.id == selectedTodoId
@@ -103,37 +98,6 @@ class TodoEntityAdapter(
             checkBox.paintFlags = checkBox.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
         } else {
             checkBox.paintFlags = checkBox.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
-        }
-    }
-
-    private fun getRecurrenceText(todo: TodoEntity): String {
-        val pattern = todo.recurrencePattern
-        return when (pattern.type) {
-            RecurrenceType.HOURLY -> "Every ${pattern.interval} hour(s)"
-            RecurrenceType.TWICE_DAILY -> "Twice daily"
-            RecurrenceType.DAILY -> "Every ${pattern.interval} day(s)"
-            RecurrenceType.WEEKLY -> {
-                if (pattern.daysOfWeek.isNotEmpty()) {
-                    val days = pattern.daysOfWeek.sorted().joinToString(", ") { dayNum ->
-                        when (dayNum) {
-                            1 -> "Mon"
-                            2 -> "Tue"
-                            3 -> "Wed"
-                            4 -> "Thu"
-                            5 -> "Fri"
-                            6 -> "Sat"
-                            7 -> "Sun"
-                            else -> ""
-                        }
-                    }
-                    "Weekly: $days"
-                } else {
-                    "Every ${pattern.interval} week(s)"
-                }
-            }
-            RecurrenceType.MONTHLY -> "Every ${pattern.interval} month(s)"
-            RecurrenceType.YEARLY -> "Every ${pattern.interval} year(s)"
-            else -> ""
         }
     }
 

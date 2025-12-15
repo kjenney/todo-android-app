@@ -25,7 +25,7 @@ class TodoNotificationWorker(
         val database = TodoDatabase.getDatabase(applicationContext)
         val todo = database.todoDao().getTodoById(todoId) ?: return Result.failure()
 
-        if (!todo.isCompleted && todo.notificationEnabled) {
+        if (!todo.isCompleted) {
             showNotification(todo.text, todoId)
         }
 

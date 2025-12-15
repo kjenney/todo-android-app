@@ -24,7 +24,7 @@ class TodoAlarmReceiver : BroadcastReceiver() {
             val database = TodoDatabase.getDatabase(context)
             val todo = database.todoDao().getTodoById(todoId)
 
-            if (todo != null && !todo.isCompleted && todo.notificationEnabled) {
+            if (todo != null && !todo.isCompleted) {
                 showNotification(context, todo.text, todoId)
             }
         }
