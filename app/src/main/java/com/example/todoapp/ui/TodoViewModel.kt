@@ -86,21 +86,17 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addTodo(
         text: String,
-        dueDateTime: Long? = null,
-        recurrencePattern: RecurrencePattern = RecurrencePattern.none(),
-        notificationEnabled: Boolean = true
+        dueDateTime: Long? = null
     ) {
         viewModelScope.launch {
             val todo = TodoEntity(
                 text = text,
-                dueDateTime = dueDateTime,
-                recurrencePattern = recurrencePattern,
-                notificationEnabled = notificationEnabled
+                dueDateTime = dueDateTime
             )
             val id = repository.insertTodo(todo)
 
-            // Schedule notification if needed
-            if (dueDateTime != null && notificationEnabled) {
+            // Schedule notification - all todos get notifications
+            if (dueDateTime != null) {
                 val insertedTodo = repository.getTodoById(id)
                 insertedTodo?.let {
                     TodoNotificationScheduler.scheduleTodoNotification(getApplication(), it)
@@ -149,8 +145,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             todos.forEach { todo ->
                 val id = repository.insertTodo(todo)
-                // Schedule notification if needed
-                if (todo.dueDateTime != null && todo.notificationEnabled) {
+                // Schedule notification - all todos get notifications
+                if (todo.dueDateTime != null) {
                     val insertedTodo = repository.getTodoById(id)
                     insertedTodo?.let {
                         TodoNotificationScheduler.scheduleTodoNotification(getApplication(), it)
@@ -161,7 +157,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Generates missing recurring todo instances and schedules notifications for them.
+     * Generates daily todo instances and schedules notifications for them.
+     * Every todo automatically appears each day with a notification.
      * This is called when the app starts and when switching views.
      */
     private fun generateAndScheduleRecurrences() {
@@ -169,7 +166,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             val newlyCreatedTodos = repository.generateMissingRecurrences()
             // Schedule notifications for all newly created todos
             newlyCreatedTodos.forEach { todo ->
-                if (todo.notificationEnabled && todo.dueDateTime != null && !todo.isCompleted) {
+                if (todo.dueDateTime != null && !todo.isCompleted) {
                     TodoNotificationScheduler.scheduleTodoNotification(getApplication(), todo)
                 }
             }

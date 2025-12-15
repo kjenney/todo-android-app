@@ -56,9 +56,6 @@ class TodoRepository(
                     text = todo.text
                 )
             )
-
-            // No need to create next occurrence here - it will be auto-generated
-            // when viewing todos based on the recurrence schedule
         } else {
             // Mark as not completed
             val uncompletedTodo = todo.copy(
@@ -76,275 +73,72 @@ class TodoRepository(
     suspend fun getDueTodos(currentTime: Long): List<TodoEntity> = todoDao.getDueTodos(currentTime)
 
     /**
-     * Generates all missing recurring todo occurrences up to today.
-     * This ensures that a new instance is created for each scheduled occurrence,
-     * regardless of whether previous instances were completed.
+     * Generates daily todo instances for all parent todos.
+     * Every todo gets a new instance each day automatically.
      * Returns the list of newly created todos.
      */
     suspend fun generateMissingRecurrences(): List<TodoEntity> {
-        val now = System.currentTimeMillis()
-        val todayEnd = Calendar.getInstance().apply {
-            timeInMillis = now
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 59)
-            set(Calendar.SECOND, 59)
-            set(Calendar.MILLISECOND, 999)
-        }.timeInMillis
-
         val newlyCreatedTodos = mutableListOf<TodoEntity>()
+        val todayStart = getTodayStart()
 
-        // Get all parent todos (those with recurrence patterns)
+        // Get all parent todos (original todos without a parent)
         val parentTodos = todoDao.getAllParentTodos()
 
         for (parentTodo in parentTodos) {
-            // Skip if this todo doesn't have a recurrence pattern
-            if (parentTodo.recurrencePattern.type == RecurrenceType.NONE) {
-                continue
-            }
+            // Check if today's instance already exists
+            val todayInstance = getTodayInstanceForParent(parentTodo.id, todayStart)
 
-            // Skip if recurrence has ended
-            val pattern = parentTodo.recurrencePattern
-            if (pattern.endDate != null && pattern.endDate < now) {
-                continue
-            }
-
-            // Get the latest occurrence for this todo family
-            val latestOccurrence = todoDao.getLatestOccurrence(parentTodo.id)
-            val startFrom = latestOccurrence?.dueDateTime ?: parentTodo.dueDateTime ?: continue
-
-            // Generate all missing occurrences from the latest one up to today
-            val created = generateOccurrencesUpTo(parentTodo, startFrom, todayEnd)
-            newlyCreatedTodos.addAll(created)
-        }
-
-        return newlyCreatedTodos
-    }
-
-    /**
-     * Generates occurrences for a recurring todo from a start date up to an end date.
-     * Returns the list of newly created todos.
-     */
-    private suspend fun generateOccurrencesUpTo(todo: TodoEntity, startFrom: Long, endDate: Long): List<TodoEntity> {
-        val pattern = todo.recurrencePattern
-        val newlyCreatedTodos = mutableListOf<TodoEntity>()
-
-        val calendar = Calendar.getInstance().apply {
-            timeInMillis = startFrom
-        }
-
-        val maxIterations = 1000 // Safety limit
-        var iterations = 0
-
-        while (iterations < maxIterations) {
-            // Calculate next occurrence date
-            when (pattern.type) {
-                RecurrenceType.HOURLY -> {
-                    calendar.add(Calendar.HOUR_OF_DAY, pattern.interval)
-                }
-                RecurrenceType.TWICE_DAILY -> {
-                    calendar.add(Calendar.HOUR_OF_DAY, 12)
-                }
-                RecurrenceType.DAILY -> {
-                    calendar.add(Calendar.DAY_OF_MONTH, pattern.interval)
-                }
-                RecurrenceType.WEEKLY -> {
-                    if (pattern.daysOfWeek.isNotEmpty()) {
-                        // Find next day of week
-                        var found = false
-                        var daysChecked = 0
-                        val maxDays = 7 * pattern.interval
-                        while (!found && daysChecked < maxDays) {
-                            calendar.add(Calendar.DAY_OF_MONTH, 1)
-                            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-                            val convertedDay = if (dayOfWeek == Calendar.SUNDAY) 7 else dayOfWeek - 1
-                            if (pattern.daysOfWeek.contains(convertedDay)) {
-                                found = true
-                            }
-                            daysChecked++
-                        }
-                        if (!found) break
-                    } else {
-                        calendar.add(Calendar.WEEK_OF_YEAR, pattern.interval)
+            if (todayInstance == null) {
+                // Create today's instance with the same time of day as the parent
+                val todayDateTime = if (parentTodo.dueDateTime != null) {
+                    // Extract time of day from parent and apply to today
+                    val parentCalendar = Calendar.getInstance().apply {
+                        timeInMillis = parentTodo.dueDateTime
                     }
+                    val hour = parentCalendar.get(Calendar.HOUR_OF_DAY)
+                    val minute = parentCalendar.get(Calendar.MINUTE)
+
+                    Calendar.getInstance().apply {
+                        timeInMillis = todayStart
+                        set(Calendar.HOUR_OF_DAY, hour)
+                        set(Calendar.MINUTE, minute)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+                } else {
+                    null
                 }
-                RecurrenceType.MONTHLY -> {
-                    calendar.add(Calendar.MONTH, pattern.interval)
-                    if (pattern.dayOfMonth != null) {
-                        calendar.set(Calendar.DAY_OF_MONTH, pattern.dayOfMonth)
-                    }
-                }
-                RecurrenceType.YEARLY -> {
-                    calendar.add(Calendar.YEAR, pattern.interval)
-                }
-                else -> break
-            }
 
-            val nextOccurrenceTime = calendar.timeInMillis
+                val newOccurrence = parentTodo.copy(
+                    id = 0, // New ID will be generated
+                    isCompleted = false,
+                    dueDateTime = todayDateTime,
+                    createdAt = System.currentTimeMillis(),
+                    lastModifiedAt = System.currentTimeMillis(),
+                    parentTodoId = parentTodo.id
+                )
 
-            // Stop if we've exceeded the end date
-            if (nextOccurrenceTime > endDate) {
-                break
-            }
-
-            // Stop if we've exceeded the recurrence end date
-            if (pattern.endDate != null && nextOccurrenceTime > pattern.endDate) {
-                break
-            }
-
-            // Create the new occurrence if it doesn't already exist
-            val newOccurrence = todo.copy(
-                id = 0, // New ID will be generated
-                isCompleted = false,
-                dueDateTime = nextOccurrenceTime,
-                createdAt = System.currentTimeMillis(),
-                lastModifiedAt = System.currentTimeMillis(),
-                parentTodoId = todo.parentTodoId ?: todo.id
-            )
-
-            // Check if this occurrence already exists
-            if (!isDuplicateOccurrence(todo, newOccurrence)) {
                 val newId = todoDao.insert(newOccurrence)
-                // Fetch the inserted todo with its new ID
                 val insertedTodo = todoDao.getTodoById(newId)
                 insertedTodo?.let { newlyCreatedTodos.add(it) }
             }
-
-            iterations++
         }
 
         return newlyCreatedTodos
     }
 
-    private suspend fun isDuplicateOccurrence(todo: TodoEntity, nextOccurrence: TodoEntity): Boolean {
-        // Get the parent ID (either this todo's parent or this todo itself if it's the parent)
-        val parentId = todo.parentTodoId ?: todo.id
-        val nextDueTime = nextOccurrence.dueDateTime ?: return false
-
-        // Check if there's already a todo within 1 hour of the next occurrence time
-        // This works for all recurrence types including TWICE_DAILY
-        val hourBefore = nextDueTime - (60 * 60 * 1000)
-        val hourAfter = nextDueTime + (60 * 60 * 1000)
-        val existingTodos = todoDao.getRelatedTodosByDateRange(parentId, hourBefore, hourAfter)
-
-        return existingTodos.isNotEmpty()
-    }
-
-    private fun createNextRecurrence(todo: TodoEntity): TodoEntity? {
-        val currentDue = todo.dueDateTime ?: return null
-        val pattern = todo.recurrencePattern
-
-        // Check if recurrence has ended
-        if (pattern.endDate != null && currentDue >= pattern.endDate) {
-            return null
-        }
-
-        val calendar = Calendar.getInstance().apply {
-            timeInMillis = currentDue
-        }
-
-        when (pattern.type) {
-            RecurrenceType.HOURLY -> {
-                calendar.add(Calendar.HOUR_OF_DAY, pattern.interval)
-            }
-            RecurrenceType.TWICE_DAILY -> {
-                calendar.add(Calendar.HOUR_OF_DAY, 12)
-            }
-            RecurrenceType.DAILY -> {
-                calendar.add(Calendar.DAY_OF_MONTH, pattern.interval)
-            }
-            RecurrenceType.WEEKLY -> {
-                if (pattern.daysOfWeek.isNotEmpty()) {
-                    // Find next day of week
-                    var daysToAdd = 1
-                    var found = false
-                    val maxDays = 7 * pattern.interval
-                    while (!found && daysToAdd <= maxDays) {
-                        calendar.add(Calendar.DAY_OF_MONTH, 1)
-                        val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-                        // Convert to 1=Monday format
-                        val convertedDay = if (dayOfWeek == Calendar.SUNDAY) 7 else dayOfWeek - 1
-                        if (pattern.daysOfWeek.contains(convertedDay)) {
-                            found = true
-                        }
-                        daysToAdd++
-                    }
-                    if (!found) return null
-                } else {
-                    calendar.add(Calendar.WEEK_OF_YEAR, pattern.interval)
-                }
-            }
-            RecurrenceType.MONTHLY -> {
-                calendar.add(Calendar.MONTH, pattern.interval)
-                if (pattern.dayOfMonth != null) {
-                    calendar.set(Calendar.DAY_OF_MONTH, pattern.dayOfMonth)
-                }
-            }
-            RecurrenceType.YEARLY -> {
-                calendar.add(Calendar.YEAR, pattern.interval)
-            }
-            else -> return null
-        }
-
-        // If the next occurrence is in the past, advance it to today or the future
-        // This handles cases where todos are completed late
-        val now = System.currentTimeMillis()
-        val todayStart = Calendar.getInstance().apply {
-            timeInMillis = now
+    private fun getTodayStart(): Long {
+        return Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
+    }
 
-        // For time-based recurrences (HOURLY, TWICE_DAILY), use the current time
-        // For date-based recurrences (DAILY, WEEKLY, MONTHLY, YEARLY), use today's start
-        val referenceTime = when (pattern.type) {
-            RecurrenceType.HOURLY, RecurrenceType.TWICE_DAILY -> now
-            else -> todayStart
-        }
-
-        // Keep adding intervals until we reach or pass the reference time
-        var iterations = 0
-        val maxIterations = 1000 // Safety limit to prevent infinite loops
-        while (calendar.timeInMillis < referenceTime && iterations < maxIterations) {
-            when (pattern.type) {
-                RecurrenceType.HOURLY -> calendar.add(Calendar.HOUR_OF_DAY, pattern.interval)
-                RecurrenceType.TWICE_DAILY -> calendar.add(Calendar.HOUR_OF_DAY, 12)
-                RecurrenceType.DAILY -> calendar.add(Calendar.DAY_OF_MONTH, pattern.interval)
-                RecurrenceType.WEEKLY -> {
-                    if (pattern.daysOfWeek.isNotEmpty()) {
-                        // For weekly with specific days, advance day by day
-                        var found = false
-                        var daysChecked = 0
-                        val maxDays = 7 * pattern.interval
-                        while (!found && daysChecked < maxDays && calendar.timeInMillis < referenceTime) {
-                            calendar.add(Calendar.DAY_OF_MONTH, 1)
-                            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-                            val convertedDay = if (dayOfWeek == Calendar.SUNDAY) 7 else dayOfWeek - 1
-                            if (pattern.daysOfWeek.contains(convertedDay)) {
-                                found = true
-                            }
-                            daysChecked++
-                        }
-                        if (!found) break
-                    } else {
-                        calendar.add(Calendar.WEEK_OF_YEAR, pattern.interval)
-                    }
-                }
-                RecurrenceType.MONTHLY -> calendar.add(Calendar.MONTH, pattern.interval)
-                RecurrenceType.YEARLY -> calendar.add(Calendar.YEAR, pattern.interval)
-                else -> break
-            }
-            iterations++
-        }
-
-        return todo.copy(
-            id = 0, // New ID will be generated
-            isCompleted = false,
-            dueDateTime = calendar.timeInMillis,
-            createdAt = System.currentTimeMillis(),
-            lastModifiedAt = System.currentTimeMillis(),
-            parentTodoId = todo.parentTodoId ?: todo.id
-        )
+    private suspend fun getTodayInstanceForParent(parentId: Long, todayStart: Long): TodoEntity? {
+        val todayEnd = todayStart + (24 * 60 * 60 * 1000) - 1
+        val instances = todoDao.getRelatedTodosByDateRange(parentId, todayStart, todayEnd)
+        return instances.firstOrNull()
     }
 }

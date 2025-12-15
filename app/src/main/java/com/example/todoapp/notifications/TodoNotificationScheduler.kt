@@ -10,7 +10,7 @@ import com.example.todoapp.data.TodoEntity
 object TodoNotificationScheduler {
 
     fun scheduleTodoNotification(context: Context, todo: TodoEntity) {
-        if (!todo.notificationEnabled || todo.dueDateTime == null || todo.isCompleted) {
+        if (todo.dueDateTime == null || todo.isCompleted) {
             return
         }
 

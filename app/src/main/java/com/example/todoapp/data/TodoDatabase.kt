@@ -4,14 +4,12 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
 
 @Database(
     entities = [TodoEntity::class, TodoCompletionHistory::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
-@TypeConverters(Converters::class)
 abstract class TodoDatabase : RoomDatabase() {
     abstract fun todoDao(): TodoDao
     abstract fun todoCompletionHistoryDao(): TodoCompletionHistoryDao
@@ -26,7 +24,9 @@ abstract class TodoDatabase : RoomDatabase() {
                     context.applicationContext,
                     TodoDatabase::class.java,
                     "todo_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration() // Simplified: recreate DB on schema changes
+                .build()
                 INSTANCE = instance
                 instance
             }

@@ -30,7 +30,7 @@ interface TodoDao {
     @Query("DELETE FROM todos WHERE id = :id")
     suspend fun deleteById(id: Long)
 
-    @Query("SELECT * FROM todos WHERE dueDateTime <= :currentTime AND notificationEnabled = 1")
+    @Query("SELECT * FROM todos WHERE dueDateTime <= :currentTime")
     suspend fun getDueTodos(currentTime: Long): List<TodoEntity>
 
     @Query("SELECT * FROM todos WHERE (id = :parentId OR parentTodoId = :parentId) AND dueDateTime >= :startTime AND dueDateTime <= :endTime AND isCompleted = 0")
